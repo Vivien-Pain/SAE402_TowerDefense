@@ -4,7 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b65e0296-434b-4ebc-b784-d47b87f2c8da" name="Changes" comment="First Commit" />
+    <list default="true" id="b65e0296-434b-4ebc-b784-d47b87f2c8da" name="Changes" comment="First Commit">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/css/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/css/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/interface.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/interface.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/main.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/main.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/spawner.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/spawner.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/js/tower.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/tower.js" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -16,6 +24,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Vivien-Pain"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Vivien-Pain/SAE402_TowerDefense.git",
+    "accountId": "7ebf2d75-8a6f-43aa-838d-6017ff6ccddb"
+  }
+}]]></component>
   <component name="PhpWorkspaceProjectConfiguration" interpreter_name="$PROJECT_DIR$/../../../../xampp/php/php.exe" />
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2
@@ -58,7 +78,7 @@
       <workItem from="1770632229748" duration="52000" />
       <workItem from="1770632285226" duration="117000" />
       <workItem from="1770632753683" duration="1742000" />
-      <workItem from="1770642032095" duration="4003000" />
+      <workItem from="1770642032095" duration="7017000" />
     </task>
     <task id="LOCAL-00001" summary="First Commit">
       <option name="closed" value="true" />

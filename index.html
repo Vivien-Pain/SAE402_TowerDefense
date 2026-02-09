@@ -2,38 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XR Tower Defense</title>
+    <title>Medieval XR Defense</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
     <script src="js/main.js"></script>
     <script src="js/tower.js"></script>
     <script src="js/spawner.js"></script>
-
-    <style>
-        /* Style du bouton XR */
-        #xr-button {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 15px 30px;
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            background-color: #0055FF;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 9999;
-            display: none; /* Caché par défaut, on l'affiche si XR est dispo */
-        }
-        #xr-button:active {
-            background-color: #0033CC;
-        }
-    </style>
+    <script src="js/interface.js" defer></script>
 </head>
 <body>
-<button id="xr-button">START XR MODE</button>
+<div id="overlay">
+    <div class="scroll-container">
+        <h1>TOWER DEFENDER</h1>
+        <div class="separator">♦</div>
+        <button id="xr-button">PREPARING SPELLS...</button>
+        <div class="instructions-box">
+            <h3>INSTRUCTION</h3>
+            <p><strong>YOUR MISSION:</strong> Hordes of goblins are breaching the reality of your chamber.</p>
+            <p><strong>TO COMMAND:</strong> Use thy <b>Right Gauntlet</b> to aim at the ground.<br>
+                Press the <b>Trigger</b> to construct defensive ballistae.</p>
+        </div>
+    </div>
+</div>
 
 <a-scene
         game-manager
@@ -44,7 +37,6 @@
         background="color: transparent">
 
     <a-camera position="0 1.6 0"></a-camera>
-
     <a-entity light="type: ambient; intensity: 1"></a-entity>
     <a-entity light="type: directional; intensity: 0.8" position="-1 2 2"></a-entity>
 
@@ -59,37 +51,8 @@
     <a-entity oculus-touch-controls="hand: left"></a-entity>
     <a-entity laser-controls="hand: right"
               raycaster="objects: .clickable; far: 10"
-              line="color: red; opacity: 0.75">
+              line="color: #d4af37; opacity: 0.8">
     </a-entity>
-
 </a-scene>
-
-<script>
-    const scene = document.querySelector('a-scene');
-    const xrButton = document.getElementById('xr-button');
-
-    // On vérifie si le navigateur supporte le XR
-    if (navigator.xr) {
-        navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-            if (supported) {
-                xrButton.style.display = 'block';
-                xrButton.textContent = "ENTER AR (Passthrough)";
-            } else {
-                // Fallback : Si AR pas supporté, on propose VR
-                xrButton.style.display = 'block';
-                xrButton.textContent = "ENTER VR";
-                xrButton.style.backgroundColor = "#555";
-            }
-        });
-    }
-
-    // Action au clic
-    xrButton.addEventListener('click', () => {
-        // Force l'entrée en mode AR (Réalité Augmentée/Mixte)
-        // C'est ça qui active le Passthrough à coup sûr
-        scene.enterAR();
-        xrButton.style.display = 'none'; // On cache le bouton
-    });
-</script>
 </body>
 </html>

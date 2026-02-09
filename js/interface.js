@@ -3,12 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const xrButton = document.getElementById('xr-button');
     const overlay = document.getElementById('overlay');
 
-    // Vérification de la compatibilité XR
     if (navigator.xr) {
         navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
             if (supported) {
                 xrButton.style.display = 'inline-block';
-                xrButton.textContent = "PREPARING SPELLS...";
+                xrButton.textContent = "PREPARING SPELLS...️";
 
                 xrButton.addEventListener('click', () => {
                     scene.enterAR();
