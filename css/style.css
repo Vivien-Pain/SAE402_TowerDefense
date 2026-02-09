@@ -109,3 +109,87 @@ p.subtitle {
     font-size: 1rem;
     line-height: 1.5;
 }
+
+#game-ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1000;
+    display: none; /* Caché au début, affiché par JS */
+    gap: 15px;
+}
+
+.stat-box {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: white;
+    font-family: 'Cinzel Decorative', cursive;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    min-width: 150px;
+}
+
+.stat-box .icon {
+    font-size: 2rem;
+    margin-right: 10px;
+}
+
+.stat-box .label {
+    font-family: 'Spectral', serif;
+    font-size: 1rem;
+    margin-right: 10px;
+    opacity: 0.8;
+}
+
+/* Couleurs spécifiques */
+.hp { border-color: #ff4444; color: #ffcccc; }
+.gold { border-color: #ffd700; color: #fff8cc; }
+
+
+/* --- ECRAN GAME OVER --- */
+#game-over {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(50, 0, 0, 0.9); /* Fond rouge sang sombre */
+    z-index: 99999; /* Par dessus tout */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    display: none; /* Caché par défaut */
+}
+
+#game-over h1 {
+    color: #ff4444;
+    font-size: 5rem;
+    text-shadow: 0 0 20px black;
+    margin-bottom: 0;
+}
+
+#game-over p {
+    color: white;
+    font-size: 2rem;
+    font-family: 'Spectral', serif;
+}
+
+#game-over button {
+    margin-top: 30px;
+    padding: 15px 40px;
+    font-size: 1.5rem;
+    background: white;
+    border: none;
+    cursor: pointer;
+    font-family: 'Cinzel Decorative', cursive;
+    transition: transform 0.2s;
+}
+
+#game-over button:hover {
+    transform: scale(1.1);
+    background: #ffcccc;
+}

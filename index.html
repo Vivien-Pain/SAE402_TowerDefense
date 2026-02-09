@@ -6,7 +6,8 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap"
+          rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script src="js/main.js"></script>
     <script src="js/tower.js"></script>
@@ -14,6 +15,25 @@
     <script src="js/interface.js" defer></script>
 </head>
 <body>
+<div id="game-ui">
+    <div class="stat-box hp">
+        <span class="icon">🛡️</span>
+        <span class="label">HEALTH:</span>
+        <span id="lives-display">20</span>
+    </div>
+    <div class="stat-box gold">
+        <span class="icon">🪙</span>
+        <span class="label">GOLD:</span>
+        <span id="money-display">100</span>
+    </div>
+</div>
+
+<div id="game-over">
+    <h1>THE KINGDOM HAS FALLEN</h1>
+    <p>Your walls have been breached.</p>
+    <button onclick="location.reload()">TRY AGAIN</button>
+</div>
+
 <div id="overlay">
     <div class="scroll-container">
         <h1>TOWER DEFENDER</h1>
@@ -23,7 +43,7 @@
             <h3>INSTRUCTION</h3>
             <p><strong>YOUR MISSION:</strong> Hordes of goblins are breaching the reality of your chamber.</p>
             <p><strong>TO COMMAND:</strong> Use thy <b>Right Gauntlet</b> to aim at the ground.<br>
-                Press the <b>Trigger</b> to construct defensive ballistae.</p>
+                Press the <b>Trigger</b> to construct defensive ballistae (Cost: 20 Gold).</p>
         </div>
     </div>
 </div>
@@ -36,7 +56,25 @@
         renderer="colorManagement: true; alpha: true"
         background="color: transparent">
 
-    <a-camera position="0 1.6 0"></a-camera>
+    <a-camera position="0 1.6 0">
+        <a-text id="hud-hp"
+                value="HP: 20"
+                position="-0.7 0.7 -1"
+                color="#FF0000"
+                width="2"
+                align="left"
+                font="mozillavr">
+        </a-text>
+
+        <a-text id="hud-gold"
+                value="GOLD: 100"
+                position="0.4 0.7 -1"
+                color="#FFD700"
+                width="2"
+                align="left"
+                font="mozillavr">
+        </a-text>
+    </a-camera>
     <a-entity light="type: ambient; intensity: 1"></a-entity>
     <a-entity light="type: directional; intensity: 0.8" position="-1 2 2"></a-entity>
 
