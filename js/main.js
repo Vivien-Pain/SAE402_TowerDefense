@@ -4,11 +4,12 @@ AFRAME.registerSystem('game-manager', {
         this.lives = 20;
         this.isGameOver = false;
 
+        // Éléments UI (HUD)
         this.hpText = document.getElementById('hud-hp');
         this.goldText = document.getElementById('hud-gold');
-        this.gameOverScreen = document.getElementById('game-over');
+        this.gameOverPanel = document.getElementById('game-over');
 
-        console.log("System Ready");
+        console.log("System Ready - Gold:", this.money);
     },
 
     updateUI: function() {
@@ -23,6 +24,7 @@ AFRAME.registerSystem('game-manager', {
             this.updateUI();
             return true;
         }
+        console.log("Pas assez d'or !");
         return false;
     },
 
@@ -36,14 +38,22 @@ AFRAME.registerSystem('game-manager', {
         if (this.isGameOver) return;
         this.lives -= amount;
         this.updateUI();
+
+        // Effet visuel de dégât (écran rouge)
+        let hud = document.querySelector('#hud-group');
+        if(hud) {
+            hud.setAttribute('position', '0 0.05 -0.5'); // Secousse
+            setTimeout(() => hud.setAttribute('position', '0 0 -0.5'), 100);
+        }
+
         if (this.lives <= 0) this.triggerGameOver();
     },
 
     triggerGameOver: function() {
         this.isGameOver = true;
-        if (this.gameOverScreen) {
-            this.gameOverScreen.style.display = 'flex';
+        if (this.gameOverPanel) {
+            this.gameOverPanel.style.display = 'flex'; // Affiche l'écran HTML
         }
-        this.el.pause();
+        console.log("GAME OVER");
     }
 });

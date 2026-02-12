@@ -2,95 +2,139 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Medieval XR Defense</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap"
-          rel="stylesheet">
+    <title>XR DEFENSE FINAL</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <script src="js/main.js"></script>
     <script src="js/tower.js"></script>
     <script src="js/spawner.js"></script>
-    <script src="js/interface.js" defer></script>
 </head>
 <body>
-<div id="game-ui">
-    <div class="stat-box hp">
-        <span class="icon">🛡️</span>
-        <span class="label">HEALTH:</span>
-        <span id="lives-display">20</span>
-    </div>
-    <div class="stat-box gold">
-        <span class="icon">🪙</span>
-        <span class="label">GOLD:</span>
-        <span id="money-display">100</span>
-    </div>
-</div>
-
-<div id="game-over">
-    <h1>THE KINGDOM HAS FALLEN</h1>
-    <p>Your walls have been breached.</p>
-    <button onclick="location.reload()">TRY AGAIN</button>
-</div>
 
 <div id="overlay">
     <div class="scroll-container">
-        <h1>TOWER DEFENDER</h1>
+        <h1>XR DEFENSE</h1>
         <div class="separator">♦</div>
-        <button id="xr-button">PREPARING SPELLS...</button>
-        <div class="instructions-box">
-            <h3>INSTRUCTION</h3>
-            <p><strong>YOUR MISSION:</strong> Hordes of goblins are breaching the reality of your chamber.</p>
-            <p><strong>TO COMMAND:</strong> Use thy <b>Right Gauntlet</b> to aim at the ground.<br>
-                Press the <b>Trigger</b> to construct defensive ballistae (Cost: 20 Gold).</p>
-        </div>
+        <p>1. Scan floor/tables.</p>
+        <p>2. Click to build (50 Gold).</p>
+        <p>3. Survive.</p>
+        <button id="xr-button" style="display: inline-block; z-index:99999;">START GAME</button>
     </div>
 </div>
 
+<div id="game-over" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(50,0,0,0.9); z-index:99999; flex-direction:column; align-items:center; justify-content:center;">
+    <h1 style="color:red; font-size:4rem;">DEFEAT</h1>
+    <button onclick="location.reload()" style="padding:20px; font-size:2rem;">RETRY</button>
+</div>
+
+<script>
+    // --- CONTROLEUR PRINCIPAL ---
+    // Gère la détection (Hit-Test) ET la construction (Game Logic)
+    AFRAME.registerComponent('ar-game-controller', {
+        init: function () {
+            this.reticle = document.getElementById('reticle');
+            this.hitTestSource = null;
+            this.isHitTestReady = false;
+
+            // Démarrage Session
+            this.el.sceneEl.renderer.xr.addEventListener('sessionstart', async () => {
+                const session = this.el.sceneEl.renderer.xr.getSession();
+                const viewerSpace = await session.requestReferenceSpace('viewer');
+                this.hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+            });
+
+            // Clic / Gâchette
+            this.el.sceneEl.addEventListener('select', () => this.tryBuild());
+            this.el.sceneEl.addEventListener('click', () => this.tryBuild());
+        },
+
+        tick: function () {
+            if (!this.hitTestSource) return;
+            const frame = this.el.sceneEl.frame;
+            const refSpace = this.el.sceneEl.renderer.xr.getReferenceSpace();
+
+            if (frame) {
+                const results = frame.getHitTestResults(this.hitTestSource);
+                if (results.length > 0) {
+                    const pose = results[0].getPose(refSpace);
+                    this.reticle.setAttribute('visible', 'true');
+                    this.reticle.object3D.position.copy(pose.transform.position);
+                    this.reticle.object3D.quaternion.copy(pose.transform.orientation);
+                    this.isHitTestReady = true;
+                } else {
+                    this.reticle.setAttribute('visible', 'false');
+                    this.isHitTestReady = false;
+                }
+            }
+        },
+
+        tryBuild: function() {
+            if (this.isHitTestReady && this.reticle.getAttribute('visible')) {
+                // APPEL AU SYSTÈME DE JEU
+                let gameSystem = this.el.sceneEl.systems['game-manager'];
+
+                // Si on a assez d'argent (50 Gold)
+                if (gameSystem && gameSystem.tryBuyTower(50)) {
+                    this.spawnTower(this.reticle.object3D.position);
+                }
+            }
+        },
+
+        spawnTower: function(pos) {
+            // Création de la Tour
+            let tower = document.createElement('a-entity');
+
+            // Visuel Tour
+            let geom = document.createElement('a-box');
+            geom.setAttribute('color', 'blue');
+            geom.setAttribute('width', 0.15);
+            geom.setAttribute('height', 0.4);
+            geom.setAttribute('depth', 0.15);
+            geom.setAttribute('position', '0 0.2 0'); // Centre visuel
+            tower.appendChild(geom);
+
+            // Logique de tir
+            tower.setAttribute('tower-logic', '');
+
+            // Positionnement sur le réticule
+            tower.setAttribute('position', pos);
+
+            this.el.sceneEl.appendChild(tower);
+        }
+    });
+
+    // Bouton Start
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('xr-button').addEventListener('click', () => {
+            document.querySelector('a-scene').enterAR();
+            document.getElementById('overlay').style.display = 'none';
+        });
+    });
+</script>
+
 <a-scene
+        ar-game-controller
         game-manager
         enemy-spawner
-        vr-mode-ui="enabled: false"
-        webxr="optionalFeatures: hit-test, local-floor, dom-overlay; overlayElement: #overlay"
+        webxr="requiredFeatures: hit-test, local-floor; optionalFeatures: dom-overlay; overlayElement: #overlay"
         renderer="colorManagement: true; alpha: true"
+        vr-mode-ui="enabled: false"
         background="color: transparent">
 
+    <a-light type="directional" intensity="1" position="-1 2 2"></a-light>
+    <a-light type="ambient" intensity="0.5"></a-light>
+
     <a-camera position="0 1.6 0">
-        <a-text id="hud-hp"
-                value="HP: 20"
-                position="-0.7 0.7 -1"
-                color="#FF0000"
-                width="2"
-                align="left"
-                font="mozillavr">
-        </a-text>
-
-        <a-text id="hud-gold"
-                value="GOLD: 100"
-                position="0.4 0.7 -1"
-                color="#FFD700"
-                width="2"
-                align="left"
-                font="mozillavr">
-        </a-text>
+        <a-entity id="hud-group" position="0 0 -0.5">
+            <a-text id="hud-hp" value="HP: 20" color="red" position="-0.3 0.15 0" width="1.5"></a-text>
+            <a-text id="hud-gold" value="GOLD: 100" color="yellow" position="0.1 0.15 0" width="1.5"></a-text>
+        </a-entity>
     </a-camera>
-    <a-entity light="type: ambient; intensity: 1"></a-entity>
-    <a-entity light="type: directional; intensity: 0.8" position="-1 2 2"></a-entity>
 
-    <a-plane id="floor"
-             tower-maker
-             rotation="-90 0 0"
-             width="40" height="40"
-             material="shader: flat; color: #ffffff; opacity: 0.0; transparent: true"
-             class="clickable">
-    </a-plane>
-
-    <a-entity oculus-touch-controls="hand: left"></a-entity>
-    <a-entity laser-controls="hand: right"
-              raycaster="objects: .clickable; far: 10"
-              line="color: #d4af37; opacity: 0.8">
+    <a-entity id="reticle" visible="false">
+        <a-ring color="#00FF00" radius-inner="0.04" radius-outer="0.05" rotation="-90 0 0"></a-ring>
     </a-entity>
+
 </a-scene>
 </body>
 </html>

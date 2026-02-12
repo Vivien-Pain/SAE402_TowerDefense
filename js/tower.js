@@ -1,34 +1,9 @@
-AFRAME.registerComponent('tower-maker', {
-    init: function () {
-        this.el.addEventListener('click', (evt) => {
-            if (!evt.detail.intersection) return;
-            let gameSystem = this.el.sceneEl.systems['game-manager'];
-            if (!gameSystem) return;
-
-            // PRIX AUGMENTÉ A 50
-            if (gameSystem.tryBuyTower(50)) {
-                let point = evt.detail.intersection.point;
-                this.spawnTower(point);
-            }
-        });
-    },
-
-    spawnTower: function (position) {
-        let tower = document.createElement('a-entity');
-        tower.setAttribute('geometry', { primitive: 'box', width: 0.2, height: 0.6, depth: 0.2 });
-        tower.setAttribute('material', { color: '#0055FF' });
-        tower.setAttribute('position', { x: position.x, y: position.y + 0.3, z: position.z });
-        tower.setAttribute('tower-logic', '');
-        this.el.sceneEl.appendChild(tower);
-    }
-});
-
+// COMPOSANT LOGIQUE DE LA TOUR (TIR)
 AFRAME.registerComponent('tower-logic', {
     init: function () {
-        // TIR RALENTI A 4 SECONDES
-        this.fireRate = 4000;
+        this.fireRate = 1000; // Tir toutes les secondes
         this.timer = 0;
-        this.range = 5;
+        this.range = 5; // Portée de 5 mètres
     },
 
     tick: function (time, timeDelta) {
@@ -49,7 +24,7 @@ AFRAME.registerComponent('tower-logic', {
         let minDist = Infinity;
 
         enemies.forEach(enemy => {
-            if (!enemy.parentNode) return;
+            if (!enemy.object3D) return;
             let dist = myPos.distanceTo(enemy.object3D.position);
             if (dist < minDist && dist <= this.range) {
                 minDist = dist;
@@ -60,38 +35,45 @@ AFRAME.registerComponent('tower-logic', {
     },
 
     fire: function (target) {
+        // Création du projectile
         let bullet = document.createElement('a-entity');
         bullet.setAttribute('geometry', { primitive: 'sphere', radius: 0.05 });
         bullet.setAttribute('material', { color: 'yellow' });
+
         let pos = this.el.object3D.position;
         bullet.setAttribute('position', { x: pos.x, y: pos.y + 0.5, z: pos.z });
+
         bullet.target = target;
-        bullet.setAttribute('projectile-behavior', '');
+        bullet.setAttribute('projectile', '');
         this.el.sceneEl.appendChild(bullet);
     }
 });
 
-AFRAME.registerComponent('projectile-behavior', {
-    init: function() { this.speed = 8; },
+// COMPOSANT PROJECTILE
+AFRAME.registerComponent('projectile', {
+    init: function() { this.speed = 10; },
     tick: function (time, timeDelta) {
         if (!this.el.target || !this.el.target.parentNode) {
             this.el.parentNode.removeChild(this.el);
             return;
         }
+
         let currentPos = this.el.object3D.position;
         let targetPos = this.el.target.object3D.position;
+
         let dx = targetPos.x - currentPos.x;
         let dy = targetPos.y - currentPos.y;
         let dz = targetPos.z - currentPos.z;
         let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
         if (dist < 0.2) {
+            // Impact !
             let stats = this.el.target.components['enemy-stats'];
             if (stats) stats.takeHit();
-            else if (this.el.target.parentNode) this.el.target.parentNode.removeChild(this.el.target);
             this.el.parentNode.removeChild(this.el);
             return;
         }
+
         let move = (this.speed * timeDelta) / 1000;
         this.el.object3D.position.x += (dx / dist) * move;
         this.el.object3D.position.y += (dy / dist) * move;
