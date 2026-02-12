@@ -1,9 +1,10 @@
 // COMPOSANT LOGIQUE DE LA TOUR (TIR)
 AFRAME.registerComponent('tower-logic', {
     init: function () {
-        this.fireRate = 1000; // Tir toutes les secondes
+        // MODIFICATION ICI : Tir toutes les 2.5 secondes (au lieu de 1s)
+        this.fireRate = 2500;
         this.timer = 0;
-        this.range = 5; // Portée de 5 mètres
+        this.range = 5;
     },
 
     tick: function (time, timeDelta) {
@@ -35,7 +36,6 @@ AFRAME.registerComponent('tower-logic', {
     },
 
     fire: function (target) {
-        // Création du projectile
         let bullet = document.createElement('a-entity');
         bullet.setAttribute('geometry', { primitive: 'sphere', radius: 0.05 });
         bullet.setAttribute('material', { color: 'yellow' });
@@ -49,7 +49,7 @@ AFRAME.registerComponent('tower-logic', {
     }
 });
 
-// COMPOSANT PROJECTILE
+// COMPOSANT PROJECTILE (Reste inchangé)
 AFRAME.registerComponent('projectile', {
     init: function() { this.speed = 10; },
     tick: function (time, timeDelta) {
@@ -67,7 +67,6 @@ AFRAME.registerComponent('projectile', {
         let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
         if (dist < 0.2) {
-            // Impact !
             let stats = this.el.target.components['enemy-stats'];
             if (stats) stats.takeHit();
             this.el.parentNode.removeChild(this.el);

@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>XR DEFENSE FINAL</title>
+    <title>XR DEFENSE - FINAL</title>
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
+
     <script src="js/main.js"></script>
     <script src="js/tower.js"></script>
     <script src="js/spawner.js"></script>
+    <script src="js/controller.js"></script>
 </head>
 <body>
 
@@ -16,8 +18,8 @@
         <h1>XR DEFENSE</h1>
         <div class="separator">♦</div>
         <p>1. Scan floor/tables.</p>
-        <p>2. Click to build (50 Gold).</p>
-        <p>3. Survive.</p>
+        <p>2. Aim with RIGHT controller.</p>
+        <p>3. Trigger to build (50 Gold).</p>
         <button id="xr-button" style="display: inline-block; z-index:99999;">START GAME</button>
     </div>
 </div>
@@ -28,82 +30,6 @@
 </div>
 
 <script>
-    // --- CONTROLEUR PRINCIPAL ---
-    // Gère la détection (Hit-Test) ET la construction (Game Logic)
-    AFRAME.registerComponent('ar-game-controller', {
-        init: function () {
-            this.reticle = document.getElementById('reticle');
-            this.hitTestSource = null;
-            this.isHitTestReady = false;
-
-            // Démarrage Session
-            this.el.sceneEl.renderer.xr.addEventListener('sessionstart', async () => {
-                const session = this.el.sceneEl.renderer.xr.getSession();
-                const viewerSpace = await session.requestReferenceSpace('viewer');
-                this.hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
-            });
-
-            // Clic / Gâchette
-            this.el.sceneEl.addEventListener('select', () => this.tryBuild());
-            this.el.sceneEl.addEventListener('click', () => this.tryBuild());
-        },
-
-        tick: function () {
-            if (!this.hitTestSource) return;
-            const frame = this.el.sceneEl.frame;
-            const refSpace = this.el.sceneEl.renderer.xr.getReferenceSpace();
-
-            if (frame) {
-                const results = frame.getHitTestResults(this.hitTestSource);
-                if (results.length > 0) {
-                    const pose = results[0].getPose(refSpace);
-                    this.reticle.setAttribute('visible', 'true');
-                    this.reticle.object3D.position.copy(pose.transform.position);
-                    this.reticle.object3D.quaternion.copy(pose.transform.orientation);
-                    this.isHitTestReady = true;
-                } else {
-                    this.reticle.setAttribute('visible', 'false');
-                    this.isHitTestReady = false;
-                }
-            }
-        },
-
-        tryBuild: function() {
-            if (this.isHitTestReady && this.reticle.getAttribute('visible')) {
-                // APPEL AU SYSTÈME DE JEU
-                let gameSystem = this.el.sceneEl.systems['game-manager'];
-
-                // Si on a assez d'argent (50 Gold)
-                if (gameSystem && gameSystem.tryBuyTower(50)) {
-                    this.spawnTower(this.reticle.object3D.position);
-                }
-            }
-        },
-
-        spawnTower: function(pos) {
-            // Création de la Tour
-            let tower = document.createElement('a-entity');
-
-            // Visuel Tour
-            let geom = document.createElement('a-box');
-            geom.setAttribute('color', 'blue');
-            geom.setAttribute('width', 0.15);
-            geom.setAttribute('height', 0.4);
-            geom.setAttribute('depth', 0.15);
-            geom.setAttribute('position', '0 0.2 0'); // Centre visuel
-            tower.appendChild(geom);
-
-            // Logique de tir
-            tower.setAttribute('tower-logic', '');
-
-            // Positionnement sur le réticule
-            tower.setAttribute('position', pos);
-
-            this.el.sceneEl.appendChild(tower);
-        }
-    });
-
-    // Bouton Start
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('xr-button').addEventListener('click', () => {
             document.querySelector('a-scene').enterAR();
@@ -125,14 +51,20 @@
     <a-light type="ambient" intensity="0.5"></a-light>
 
     <a-camera position="0 1.6 0">
-        <a-entity id="hud-group" position="0 0 -0.5">
-            <a-text id="hud-hp" value="HP: 20" color="red" position="-0.3 0.15 0" width="1.5"></a-text>
-            <a-text id="hud-gold" value="GOLD: 100" color="yellow" position="0.1 0.15 0" width="1.5"></a-text>
+        <a-entity id="hud-group" position="0 -0.25 -0.5" rotation="-15 0 0">
+            <a-plane color="black" opacity="0.5" width="0.8" height="0.15" position="0 0.15 -0.01"></a-plane>
+
+            <a-text id="hud-hp" value="HP: 20" color="#FF4444" position="-0.3 0.15 0" width="1.5"></a-text>
+            <a-text id="hud-gold" value="GOLD: 100" color="#FFD700" position="0.1 0.15 0" width="1.5"></a-text>
         </a-entity>
     </a-camera>
 
+    <a-entity oculus-touch-controls="hand: right"></a-entity>
+    <a-entity oculus-touch-controls="hand: left"></a-entity>
+
     <a-entity id="reticle" visible="false">
         <a-ring color="#00FF00" radius-inner="0.04" radius-outer="0.05" rotation="-90 0 0"></a-ring>
+        <a-cylinder color="#00FF00" height="0.1" radius="0.005" position="0 0.05 0"></a-cylinder>
     </a-entity>
 
 </a-scene>
