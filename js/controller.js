@@ -36,7 +36,7 @@ AFRAME.registerComponent('ar-game-controller', {
 
                 let hitPos = pose.transform.position;
 
-                // NOUVEAU : Calcul de la distance avec la MANETTE
+                // Calcul de la distance avec la MANETTE
                 let rayPose = frame.getPose(this.inputSource.targetRaySpace, refSpace);
                 if (rayPose) {
                     let cp = rayPose.transform.position;
@@ -51,7 +51,7 @@ AFRAME.registerComponent('ar-game-controller', {
                     }
                 }
 
-                // Ancienne vérification : Distance avec la CAMERA (tête du joueur)
+                // Vérification : Distance avec la CAMERA (tête du joueur)
                 let cameraEl = document.querySelector('a-camera');
                 let cameraPos = cameraEl ? cameraEl.object3D.position : new THREE.Vector3(0,0,0);
                 let dx = cameraPos.x - hitPos.x, dz = cameraPos.z - hitPos.z;
@@ -71,12 +71,34 @@ AFRAME.registerComponent('ar-game-controller', {
     tryBuild: function() {
         if (this.isHitTestReady && this.reticle.getAttribute('visible') === true) {
             let gameSystem = this.el.sceneEl.systems['game-manager'];
-            let towerType = 'basic_turret';
-            if (gameSystem && gameSystem.tryBuyTower(TOWER_DATA[towerType].cost)) {
-                this.spawnTower(this.reticle.object3D.position, towerType);
+            if (!gameSystem) return;
+
+            // --- MODIFIÉ : Gestion des états ---
+            if (gameSystem.gameState === 'placing_base') {
+                this.spawnBase(this.reticle.object3D.position);
+                gameSystem.setBasePosition(this.reticle.object3D.position);
             }
+            else if (gameSystem.gameState === 'playing') {
+                let towerType = 'basic_turret';
+                if (gameSystem.tryBuyTower(TOWER_DATA[towerType].cost)) {
+                    this.spawnTower(this.reticle.object3D.position, towerType);
+                }
+            }
+            // -----------------------------------
         }
     },
+    // --- NOUVEAUTÉ : Création du visuel de la base ---
+    spawnBase: function(pos) {
+        let base = document.createElement('a-entity');
+        base.setAttribute('geometry', 'primitive: octahedron; radius: 0.15');
+        base.setAttribute('material', 'color: #00ffff; metalness: 0.8; roughness: 0.2');
+        base.setAttribute('position', {x: pos.x, y: pos.y + 0.2, z: pos.z});
+        base.setAttribute('animation__rot', 'property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear');
+        base.setAttribute('animation__bob', 'property: position; dir: alternate; dur: 2000; easing: easeInOutSine; to: ' + pos.x + ' ' + (pos.y + 0.3) + ' ' + pos.z);
+        base.setAttribute('id', 'player-base');
+        this.el.sceneEl.appendChild(base);
+    },
+    // -------------------------------------------------
     spawnTower: function(pos, towerType) {
         let data = TOWER_DATA[towerType];
         let tower = document.createElement('a-entity');

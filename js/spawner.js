@@ -44,6 +44,9 @@ AFRAME.registerComponent('enemy-spawner', {
         this.isWaveActive = true; this.enemiesPerWave = 5;
     },
     tick: function (time, timeDelta) {
+        let gameSystem = this.el.sceneEl.systems['game-manager'];
+        if (!gameSystem || gameSystem.gameState !== 'playing') return;
+
         this.timer += timeDelta;
         if (this.isWaveActive) {
             if (this.timer >= this.data.spawnInterval) {
@@ -79,7 +82,12 @@ AFRAME.registerComponent('enemy-spawner', {
         let enemy = document.createElement('a-entity');
         enemy.classList.add('enemy');
         let angle = Math.random() * Math.PI * 2, dist = 4;
-        enemy.setAttribute('position', { x: Math.cos(angle) * dist, y: 0.5, z: Math.sin(angle) * dist });
+
+        let gameSystem = this.el.sceneEl.systems['game-manager'];
+        let baseX = gameSystem ? gameSystem.basePosition.x : 0;
+        let baseZ = gameSystem ? gameSystem.basePosition.z : 0;
+        enemy.setAttribute('position', { x: baseX + Math.cos(angle) * dist, y: 0.5, z: baseZ + Math.sin(angle) * dist });
+
         enemy.setAttribute('scale', data.scale);
         enemy.setAttribute('gltf-model', data.model);
         enemy.setAttribute('enemy-stats', {
@@ -124,21 +132,79 @@ AFRAME.registerComponent('enemy-walker', {
     tick: function (time, timeDelta) {
         let stats = this.el.components['enemy-stats'];
         if(!stats || stats.isDead || stats.isAttacking) return;
-        let pos = this.el.object3D.position, dx = 0 - pos.x, dz = 0 - pos.z, dist = Math.sqrt(dx*dx + dz*dz);
-        this.el.object3D.rotation.y = Math.atan2(dx, dz);
-        if (dist < 0.3) {
+
+        let pos = this.el.object3D.position;
+        let gameSystem = this.el.sceneEl.systems['game-manager'];
+        let targetPos = gameSystem ? gameSystem.basePosition : new THREE.Vector3(0,0,0);
+
+        // 1. Calcul de l'attraction vers la base
+        let dx = targetPos.x - pos.x;
+        let dz = targetPos.z - pos.z;
+        let distToBase = Math.sqrt(dx*dx + dz*dz);
+
+        if (distToBase < 0.3) {
             stats.isAttacking = true;
             this.el.setAttribute('animation-mixer', `clip: ${stats.data.attackAnim}; loop: once; crossFadeDuration: 0.2`);
-            let system = this.el.sceneEl.systems['game-manager'];
             setTimeout(() => {
-                if(system) system.takeDamage(stats.data.damage);
+                if(gameSystem) gameSystem.takeDamage(stats.data.damage);
                 if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
             }, 1000);
             return;
         }
+
+        // Vecteur de direction normalisé vers la base
+        let dirX = dx / distToBase;
+        let dirZ = dz / distToBase;
+
+        // --- NOUVEAUTÉ : Évitement des tours (sauf pour les volants) ---
+        let repX = 0;
+        let repZ = 0;
+
+        if (!stats.data.isFlying) {
+            let towers = document.querySelectorAll('[tower-logic]');
+            let avoidanceRadius = 0.35; // Distance à laquelle l'ennemi commence à dévier
+
+            towers.forEach(tower => {
+                let tPos = tower.object3D.position;
+                let tDx = pos.x - tPos.x; // Vecteur de la tour VERS l'ennemi
+                let tDz = pos.z - tPos.z;
+                let tDist = Math.sqrt(tDx*tDx + tDz*tDz);
+
+                if (tDist < avoidanceRadius && tDist > 0) {
+                    // Force de répulsion (plus l'ennemi est proche, plus c'est fort)
+                    let force = (avoidanceRadius - tDist) / avoidanceRadius;
+
+                    // Répulsion pour s'éloigner
+                    repX += (tDx / tDist) * force * 1.5;
+                    repZ += (tDz / tDist) * force * 1.5;
+
+                    // Glissement (Tangente) pour contourner la tour sans rester bloqué de face
+                    repX += (-tDz / tDist) * force * 2.0;
+                    repZ += (tDx / tDist) * force * 2.0;
+                }
+            });
+        }
+        // ---------------------------------------------------------------
+
+        // Direction finale = Attraction Base + Répulsion Tours
+        let finalDirX = dirX + repX;
+        let finalDirZ = dirZ + repZ;
+        let finalDist = Math.sqrt(finalDirX*finalDirX + finalDirZ*finalDirZ);
+
+        if (finalDist > 0) {
+            finalDirX /= finalDist;
+            finalDirZ /= finalDist;
+        }
+
+        // Rotation pour regarder dans la direction finale
+        this.el.object3D.rotation.y = Math.atan2(finalDirX, finalDirZ);
+
+        // Déplacement
         let move = (stats.data.speed * timeDelta) / 1000;
-        this.el.object3D.position.x += (dx / dist) * move;
-        this.el.object3D.position.z += (dz / dist) * move;
+        this.el.object3D.position.x += finalDirX * move;
+        this.el.object3D.position.z += finalDirZ * move;
+
+        // Ajustement à la hauteur du sol (inchangé)
         let sensorEl = this.el.querySelector('.altitude-sensor'), floorY = 0;
         if (sensorEl && sensorEl.components.raycaster) {
             let ray = sensorEl.components.raycaster, intersections = ray.intersectedEls;
