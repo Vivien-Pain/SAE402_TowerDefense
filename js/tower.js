@@ -1,10 +1,11 @@
 AFRAME.registerComponent('tower-logic', {
+    schema: { type: { type: 'string', default: 'basic_turret' } },
     init: function () {
-        this.fireRate = 2500;
+        let data = TOWER_DATA[this.data.type];
+        this.fireRate = data.fireRate;
+        this.range = data.range;
         this.timer = 0;
-        this.range = 5;
     },
-
     tick: function (time, timeDelta) {
         this.timer += timeDelta;
         if (this.timer >= this.fireRate) {
@@ -15,39 +16,23 @@ AFRAME.registerComponent('tower-logic', {
             }
         }
     },
-
     findClosestEnemy: function () {
         let enemies = document.querySelectorAll('.enemy');
-        let myPos = this.el.object3D.position;
-        let closest = null;
-        let minDist = Infinity;
-        let isHighTower = myPos.y > 0.4;
-
+        let myPos = this.el.object3D.position, closest = null, minDist = Infinity, isHighTower = myPos.y > 0.4;
         enemies.forEach(enemy => {
             if (!enemy.object3D) return;
             let stats = enemy.getAttribute('enemy-stats');
-
-            if (stats && stats.isFlying && !isHighTower) {
-                return;
-            }
-
+            if (stats && stats.isFlying && !isHighTower) return;
             let dist = myPos.distanceTo(enemy.object3D.position);
-            if (dist < minDist && dist <= this.range) {
-                minDist = dist;
-                closest = enemy;
-            }
+            if (dist < minDist && dist <= this.range) { minDist = dist; closest = enemy; }
         });
         return closest;
     },
-
     fire: function (target) {
-        let bullet = document.createElement('a-entity');
+        let bullet = document.createElement('a-entity'), pos = this.el.object3D.position, data = TOWER_DATA[this.data.type];
         bullet.setAttribute('geometry', { primitive: 'sphere', radius: 0.05 });
         bullet.setAttribute('material', { color: 'yellow' });
-
-        let pos = this.el.object3D.position;
-        bullet.setAttribute('position', { x: pos.x, y: pos.y + 0.2, z: pos.z });
-
+        bullet.setAttribute('position', { x: pos.x, y: pos.y + data.offsetY + 0.05, z: pos.z });
         bullet.target = target;
         bullet.setAttribute('projectile', '');
         this.el.sceneEl.appendChild(bullet);
@@ -61,22 +46,15 @@ AFRAME.registerComponent('projectile', {
             this.el.parentNode.removeChild(this.el);
             return;
         }
-
-        let currentPos = this.el.object3D.position;
-        let targetPos = this.el.target.object3D.position;
-
-        let dx = targetPos.x - currentPos.x;
-        let dy = targetPos.y - currentPos.y;
-        let dz = targetPos.z - currentPos.z;
+        let currentPos = this.el.object3D.position, targetPos = this.el.target.object3D.position;
+        let dx = targetPos.x - currentPos.x, dy = targetPos.y - currentPos.y, dz = targetPos.z - currentPos.z;
         let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
         if (dist < 0.2) {
             let stats = this.el.target.components['enemy-stats'];
             if (stats) stats.takeHit();
             this.el.parentNode.removeChild(this.el);
             return;
         }
-
         let move = (this.speed * timeDelta) / 1000;
         this.el.object3D.position.x += (dx / dist) * move;
         this.el.object3D.position.y += (dy / dist) * move;
