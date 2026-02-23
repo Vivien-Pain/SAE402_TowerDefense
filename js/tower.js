@@ -1,7 +1,5 @@
-// COMPOSANT LOGIQUE DE LA TOUR (TIR)
 AFRAME.registerComponent('tower-logic', {
     init: function () {
-        // MODIFICATION ICI : Tir toutes les 2.5 secondes (au lieu de 1s)
         this.fireRate = 2500;
         this.timer = 0;
         this.range = 5;
@@ -23,9 +21,16 @@ AFRAME.registerComponent('tower-logic', {
         let myPos = this.el.object3D.position;
         let closest = null;
         let minDist = Infinity;
+        let isHighTower = myPos.y > 0.4;
 
         enemies.forEach(enemy => {
             if (!enemy.object3D) return;
+            let stats = enemy.getAttribute('enemy-stats');
+
+            if (stats && stats.isFlying && !isHighTower) {
+                return;
+            }
+
             let dist = myPos.distanceTo(enemy.object3D.position);
             if (dist < minDist && dist <= this.range) {
                 minDist = dist;
@@ -41,7 +46,7 @@ AFRAME.registerComponent('tower-logic', {
         bullet.setAttribute('material', { color: 'yellow' });
 
         let pos = this.el.object3D.position;
-        bullet.setAttribute('position', { x: pos.x, y: pos.y + 0.5, z: pos.z });
+        bullet.setAttribute('position', { x: pos.x, y: pos.y + 0.2, z: pos.z });
 
         bullet.target = target;
         bullet.setAttribute('projectile', '');
@@ -49,7 +54,6 @@ AFRAME.registerComponent('tower-logic', {
     }
 });
 
-// COMPOSANT PROJECTILE (Reste inchangé)
 AFRAME.registerComponent('projectile', {
     init: function() { this.speed = 10; },
     tick: function (time, timeDelta) {

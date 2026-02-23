@@ -1,21 +1,12 @@
-/* js/spawner.js - Capteur Anticipé & Debug Visuel */
-
-// 1. GESTIONNAIRE DE PLANS (DEBUG)
 AFRAME.registerComponent('plane-manager', {
     init: function () {
         this.el.sceneEl.addEventListener('child-attached', (evt) => {
             let el = evt.detail.el;
-            // On attend que le plan soit prêt
             setTimeout(() => {
                 if (el.components && el.components['xr-plane']) {
                     let orientation = el.components['xr-plane'].data.orientation;
-
-                    // Si c'est une TABLE ou le SOL
                     if (orientation === 'horizontal') {
                         el.classList.add('climbable');
-
-                        // DEBUG : On rend la table VISIBLE (Grillage Vert)
-                        // Si tu ne vois pas de grillage vert sur ta table, le scan ne marche pas.
                         el.setAttribute('material', {
                             color: '#00FF00',
                             opacity: 0.3,
@@ -39,7 +30,6 @@ AFRAME.registerComponent('enemy-spawner', {
     },
 
     init: function () {
-        // Force l'ajout du plane-manager
         if (!this.el.sceneEl.hasAttribute('plane-manager')) {
             this.el.sceneEl.setAttribute('plane-manager', '');
         }
@@ -87,9 +77,10 @@ AFRAME.registerComponent('enemy-spawner', {
 
     spawnRandomEnemy: function () {
         let rand = Math.random();
-        let type = 'goblin';
-        if (this.waveCount >= 2 && rand > 0.6) type = 'orc';
-        if (this.waveCount >= 3 && rand > 0.8) type = 'knight';
+        let type = 'demon';
+        if (this.waveCount >= 2 && rand > 0.5) type = 'skeleton';
+        if (this.waveCount >= 3 && rand > 0.75) type = 'orc';
+        if (this.waveCount >= 4 && rand > 0.9) type = 'dragon';
         this.createEnemy(type);
     },
 
@@ -102,76 +93,59 @@ AFRAME.registerComponent('enemy-spawner', {
         let x = Math.cos(angle) * dist;
         let z = Math.sin(angle) * dist;
 
-        // Spawn légèrement surélevé
         enemy.setAttribute('position', { x: x, y: 0.5, z: z });
 
-        // Configuration avec OFFSET
-        if (type === 'goblin') {
-            enemy.setAttribute('geometry', { primitive: 'sphere', radius: 0.15 });
-            enemy.setAttribute('material', { color: '#FF4444' });
-            enemy.setAttribute('enemy-stats', { hp: 2, speed: 0.8, damage: 1, reward: 5, offsetY: 0.15 });
+        if (type === 'demon') {
+            enemy.setAttribute('scale', '0.15 0.15 0.15');
+            enemy.setAttribute('gltf-model', '#model-demon');
+            enemy.setAttribute('enemy-stats', { hp: 2, speed: 0.8, damage: 1, reward: 5, offsetY: 0, isFlying: false });
+        }
+        else if (type === 'skeleton') {
+            enemy.setAttribute('scale', '0.2 0.2 0.2');
+            enemy.setAttribute('gltf-model', '#model-skeleton');
+            // HP réduits de 10 à 6
+            enemy.setAttribute('enemy-stats', { hp: 6, speed: 0.5, damage: 5, reward: 30, offsetY: 0, isFlying: false });
         }
         else if (type === 'orc') {
-            enemy.setAttribute('geometry', { primitive: 'box', width: 0.4, height: 0.5, depth: 0.4 });
-            enemy.setAttribute('material', { color: '#4CAF50' });
-            enemy.setAttribute('enemy-stats', { hp: 6, speed: 0.4, damage: 3, reward: 20, offsetY: 0.25 });
+            enemy.setAttribute('scale', '0.45 0.45 0.45');
+            enemy.setAttribute('gltf-model', '#model-orc');
+            enemy.setAttribute('enemy-stats', { hp: 10, speed: 0.3, damage: 8, reward: 25, offsetY: 0, isFlying: false });
         }
-        else if (type === 'knight') {
-            enemy.setAttribute('geometry', { primitive: 'cylinder', radius: 0.2, height: 0.6 });
-            enemy.setAttribute('material', { color: '#2196F3' });
-            enemy.setAttribute('enemy-stats', { hp: 10, speed: 0.5, damage: 5, reward: 30, offsetY: 0.3 });
-
-            let shield = document.createElement('a-box');
-            shield.setAttribute('color', 'gold');
-            shield.setAttribute('depth', 0.05);
-            shield.setAttribute('width', 0.3);
-            shield.setAttribute('height', 0.4);
-            shield.setAttribute('position', '0 0.2 0.25');
-            enemy.appendChild(shield);
+        else if (type === 'dragon') {
+            enemy.setAttribute('scale', '0.15 0.15 0.15');
+            enemy.setAttribute('gltf-model', '#model-dragon');
+            enemy.setAttribute('enemy-stats', { hp: 8, speed: 0.6, damage: 4, reward: 40, offsetY: 1.2, isFlying: true });
         }
 
-        // --- CAPTEUR ANTICIPÉ (Satellite Avancé) ---
         let sensor = document.createElement('a-entity');
-        // Position: 2m de haut, et 0.5m EN AVANT (-0.5 en Z local)
         sensor.setAttribute('position', '0 2.0 -0.5');
-
         sensor.setAttribute('raycaster', {
             objects: '.climbable',
-            direction: {x: 0, y: -1, z: 0}, // Pointe vers le bas
-            far: 4,                         // Portée longue
-            showLine: true,                 // LIGNE VISIBLE (Debug)
-            interval: 0                     // Scan à chaque frame (Réactif)
+            direction: {x: 0, y: -1, z: 0},
+            far: 4,
+            showLine: true,
+            interval: 0
         });
-        // Ligne rouge pour voir ce que l'ennemi regarde
         sensor.setAttribute('line', {color: 'red', opacity: 0.6});
         sensor.classList.add('altitude-sensor');
 
-        // Boule de debug au bout du laser
-        let debugBall = document.createElement('a-sphere');
-        debugBall.setAttribute('radius', '0.05');
-        debugBall.setAttribute('color', 'yellow');
-        debugBall.setAttribute('visible', 'false');
-        debugBall.classList.add('debug-ball');
-        sensor.appendChild(debugBall);
-
         enemy.appendChild(sensor);
-
         enemy.setAttribute('enemy-walker', '');
         this.el.sceneEl.appendChild(enemy);
     }
 });
 
-// 3. STATS
 AFRAME.registerComponent('enemy-stats', {
     schema: {
         hp: {default: 1}, speed: {default: 1}, damage: {default: 1}, reward: {default: 10},
-        offsetY: {default: 0}
+        offsetY: {default: 0}, isFlying: {default: false}
     },
     takeHit: function() {
         this.data.hp--;
         let el = this.el;
-        el.setAttribute('material', 'color', 'white');
-        setTimeout(() => { if(el.parentNode) el.setAttribute('material', 'color', 'red'); }, 100); // Retour au rouge par défaut (simplifié)
+
+        el.setAttribute('visible', 'false');
+        setTimeout(() => { if(el.parentNode) el.setAttribute('visible', 'true'); }, 50);
 
         if (this.data.hp <= 0) {
             let system = this.el.sceneEl.systems['game-manager'];
@@ -181,7 +155,6 @@ AFRAME.registerComponent('enemy-stats', {
     }
 });
 
-// 4. IA DEPLACEMENT (Avec Anticipation)
 AFRAME.registerComponent('enemy-walker', {
     tick: function (time, timeDelta) {
         let stats = this.el.getAttribute('enemy-stats');
@@ -205,44 +178,24 @@ AFRAME.registerComponent('enemy-walker', {
         this.el.object3D.position.x += (dx / dist) * move;
         this.el.object3D.position.z += (dz / dist) * move;
 
-        // --- GESTION HAUTEUR ANTICIPÉE ---
         let sensorEl = this.el.querySelector('.altitude-sensor');
-        let debugBall = sensorEl ? sensorEl.querySelector('.debug-ball') : null;
-
         let floorY = 0;
-        let detected = false;
 
         if (sensorEl && sensorEl.components.raycaster) {
             let ray = sensorEl.components.raycaster;
             let intersections = ray.intersectedEls;
             if (intersections.length > 0) {
                 let hit = ray.getIntersection(intersections[0]);
-                if (hit) {
-                    floorY = hit.point.y;
-                    detected = true;
-
-                    // Debug visuel : Montre où le laser tape
-                    if(debugBall) {
-                        debugBall.setAttribute('visible', 'true');
-                        // Position locale (approximative pour debug)
-                        debugBall.object3D.position.y = -hit.distance;
-                    }
-                }
-            } else {
-                if(debugBall) debugBall.setAttribute('visible', 'false');
+                if (hit) floorY = hit.point.y;
             }
         }
 
         let targetY = floorY + stats.offsetY;
 
-        // Lissage
-        let currentY = this.el.object3D.position.y;
-
-        // Si on détecte une table haute devant nous, on monte VITE
-        if (targetY > currentY + 0.1) {
-            this.el.object3D.position.y += (targetY - currentY) * 0.2;
+        if (targetY > this.el.object3D.position.y + 0.1) {
+            this.el.object3D.position.y += (targetY - this.el.object3D.position.y) * 0.2;
         } else {
-            this.el.object3D.position.y += (targetY - currentY) * 0.1;
+            this.el.object3D.position.y += (targetY - this.el.object3D.position.y) * 0.1;
         }
     }
 });

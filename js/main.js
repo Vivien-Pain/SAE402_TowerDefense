@@ -4,7 +4,6 @@ AFRAME.registerSystem('game-manager', {
         this.lives = 20;
         this.isGameOver = false;
 
-        // Éléments UI (HUD)
         this.hpText = document.getElementById('hud-hp');
         this.goldText = document.getElementById('hud-gold');
         this.gameOverPanel = document.getElementById('game-over');
@@ -39,10 +38,9 @@ AFRAME.registerSystem('game-manager', {
         this.lives -= amount;
         this.updateUI();
 
-        // Effet visuel de dégât (écran rouge)
         let hud = document.querySelector('#hud-group');
         if(hud) {
-            hud.setAttribute('position', '0 0.05 -0.5'); // Secousse
+            hud.setAttribute('position', '0 0.05 -0.5');
             setTimeout(() => hud.setAttribute('position', '0 0 -0.5'), 100);
         }
 
@@ -52,7 +50,7 @@ AFRAME.registerSystem('game-manager', {
     triggerGameOver: function() {
         this.isGameOver = true;
         if (this.gameOverPanel) {
-            this.gameOverPanel.style.display = 'flex'; // Affiche l'écran HTML
+            this.gameOverPanel.style.display = 'flex';
         }
         console.log("GAME OVER");
     }
