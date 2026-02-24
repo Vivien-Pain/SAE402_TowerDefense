@@ -21,6 +21,24 @@ AFRAME.registerComponent('smart-animator', {
     }
 });
 
+AFRAME.registerComponent('mob-sound', {
+    schema: { src: { type: 'string' } },
+    init: function() {
+        this.el.setAttribute('sound', `src: ${this.data.src}; loop: false; volume: 0.2; positional: true; refDistance: 1`);
+        this.timer = Math.random() * 3000 + 1000;
+    },
+    tick: function(time, timeDelta) {
+        let stats = this.el.components['enemy-stats'];
+        if (stats && stats.isDead) return;
+
+        this.timer -= timeDelta;
+        if (this.timer <= 0) {
+            if(this.el.components.sound) this.el.components.sound.playSound();
+            this.timer = Math.random() * 5000 + 5000;
+        }
+    }
+});
+
 AFRAME.registerComponent('plane-manager', {
     init: function () {
         this.el.sceneEl.addEventListener('child-attached', (evt) => {
@@ -95,6 +113,13 @@ AFRAME.registerComponent('enemy-spawner', {
             isFlying: data.isFlying, attackAnim: data.attackAnim, walkAnim: data.walkAnim, hitAnim: data.hitAnim, deathAnim: data.deathAnim
         });
         enemy.setAttribute('smart-animator', '');
+
+        let soundId = '#snd-gobelin';
+        if (type === 'skeleton') soundId = '#snd-skeleton';
+        else if (type === 'orc') soundId = '#snd-orc';
+        else if (type === 'dragon') soundId = '#snd-dragon';
+        enemy.setAttribute('mob-sound', `src: ${soundId}`);
+
         let sensor = document.createElement('a-entity');
         sensor.setAttribute('position', '0 2.0 -0.5');
         sensor.setAttribute('raycaster', { objects: '.climbable', direction: {x: 0, y: -1, z: 0}, far: 4, interval: 0 });

@@ -66,6 +66,13 @@ AFRAME.registerComponent('tower-logic', {
         bullet.setAttribute('projectile', '');
         this.el.sceneEl.appendChild(bullet);
 
+        let shootSound = document.createElement('a-entity');
+        let soundId = this.data.type === 'lighting_turret' ? '#snd-zap' : '#snd-magic';
+        shootSound.setAttribute('sound', `src: ${soundId}; autoplay: true; volume: 0.15; positional: true; refDistance: 1`);
+        shootSound.setAttribute('position', firePos);
+        this.el.sceneEl.appendChild(shootSound);
+        setTimeout(() => { if (shootSound.parentNode) shootSound.parentNode.removeChild(shootSound); }, 2000);
+
         let flash = document.createElement('a-entity');
         flash.setAttribute('geometry', 'primitive: sphere; radius: 0.08');
 
@@ -139,9 +146,13 @@ AFRAME.registerComponent('projectile', {
 
         impact.setAttribute('animation__scale', 'property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad');
         impact.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 200; easing: easeOutQuad');
-
         this.el.sceneEl.appendChild(impact);
-
         setTimeout(() => { if (impact.parentNode) impact.parentNode.removeChild(impact); }, 200);
+
+        let impactSound = document.createElement('a-entity');
+        impactSound.setAttribute('sound', `src: #snd-boom; autoplay: true; volume: 0.2; positional: true; refDistance: 1`);
+        impactSound.setAttribute('position', pos);
+        this.el.sceneEl.appendChild(impactSound);
+        setTimeout(() => { if (impactSound.parentNode) impactSound.parentNode.removeChild(impactSound); }, 2000);
     }
 });
