@@ -29,7 +29,7 @@ const MOB_DATA = {
     },
     'orc': {
         model: '#model-orc',
-        scale: '0.4 0.4 0.4',
+        scale: '0.5 0.5 0.5',
         offsetY: 0,
         hp: 12,
         speed: 0.25,

@@ -3,8 +3,12 @@ AFRAME.registerComponent('tower-logic', {
     init: function () {
         let data = TOWER_DATA[this.data.type];
         this.hp = data.hp || 0;
+        this.isShield = this.data.type === 'shield_turret';
 
-        if (this.data.type === 'shield_turret') {
+        // Enregistre la tour dans la mémoire globale
+        this.el.sceneEl.systems['game-manager'].registerTower(this.el, this.isShield);
+
+        if (this.isShield) {
             this.el.classList.add('shield-tower');
             return;
         }
@@ -13,15 +17,19 @@ AFRAME.registerComponent('tower-logic', {
         this.range = data.range;
         this.timer = 0;
     },
+    remove: function () {
+        // Nettoie la mémoire si la tour est détruite
+        this.el.sceneEl.systems['game-manager'].unregisterTower(this.el, this.isShield);
+    },
     takeDamage: function(amount) {
-        if (this.data.type !== 'shield_turret') return;
+        if (!this.isShield) return;
         this.hp -= amount;
-        if (this.hp <= 0) {
-            if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+        if (this.hp <= 0 && this.el.parentNode) {
+            this.el.parentNode.removeChild(this.el);
         }
     },
     tick: function (time, timeDelta) {
-        if (this.data.type === 'shield_turret') return;
+        if (this.isShield) return;
 
         this.timer += timeDelta;
         if (this.timer >= this.fireRate) {
@@ -33,15 +41,29 @@ AFRAME.registerComponent('tower-logic', {
         }
     },
     findClosestEnemy: function () {
-        let enemies = document.querySelectorAll('.enemy');
-        let myPos = this.el.object3D.position, closest = null, minDist = Infinity, isHighTower = myPos.y > 0.4;
-        enemies.forEach(enemy => {
-            if (!enemy.object3D) return;
+        // OPTIMISATION : Utilise la liste en mémoire, sans querySelectorAll
+        let gameSystem = this.el.sceneEl.systems['game-manager'];
+        let enemies = gameSystem ? gameSystem.enemies : [];
+        let myPos = this.el.object3D.position;
+        let closest = null;
+
+        // Optimisation Math.sqrt : on compare les carrés des distances
+        let minDistSq = this.range * this.range;
+        let isHighTower = myPos.y > 0.4;
+
+        for (let i = 0; i < enemies.length; i++) {
+            let enemy = enemies[i];
+            if (!enemy.object3D) continue;
+
             let stats = enemy.getAttribute('enemy-stats');
-            if (stats && stats.isFlying && !isHighTower) return;
-            let dist = myPos.distanceTo(enemy.object3D.position);
-            if (dist < minDist && dist <= this.range) { minDist = dist; closest = enemy; }
-        });
+            if (stats && stats.isFlying && !isHighTower) continue;
+
+            let distSq = myPos.distanceToSquared(enemy.object3D.position);
+            if (distSq < minDistSq) {
+                minDistSq = distSq;
+                closest = enemy;
+            }
+        }
         return closest;
     },
     fire: function (target) {
@@ -61,6 +83,7 @@ AFRAME.registerComponent('tower-logic', {
         } else {
             bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.015; height: 0.2');
             bullet.setAttribute('material', 'color: #ffaa00; emissive: #ff5500; emissiveIntensity: 2');
+            bullet.effect = 'normal';
         }
 
         bullet.setAttribute('projectile', '');
@@ -75,13 +98,7 @@ AFRAME.registerComponent('tower-logic', {
 
         let flash = document.createElement('a-entity');
         flash.setAttribute('geometry', 'primitive: sphere; radius: 0.08');
-
-        if (this.data.type === 'lighting_turret') {
-            flash.setAttribute('material', 'color: #ffffff; emissive: #00ffff; emissiveIntensity: 4; transparent: true; opacity: 0.9');
-        } else {
-            flash.setAttribute('material', 'color: #ffffff; emissive: #ffff00; emissiveIntensity: 4; transparent: true; opacity: 0.9');
-        }
-
+        flash.setAttribute('material', `color: #ffffff; emissive: ${this.data.type === 'lighting_turret' ? '#00ffff' : '#ffff00'}; emissiveIntensity: 4; transparent: true; opacity: 0.9`);
         flash.setAttribute('position', firePos);
         flash.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 150; easing: easeOutQuad');
         flash.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 150; easing: easeOutQuad');
@@ -101,7 +118,6 @@ AFRAME.registerComponent('projectile', {
 
         let currentPos = this.el.object3D.position;
         let targetPos = this.el.target.object3D.position;
-
         let targetY = targetPos.y + 0.3;
 
         let dx = targetPos.x - currentPos.x;
@@ -120,9 +136,7 @@ AFRAME.registerComponent('projectile', {
                     stats.applyStun(TOWER_DATA['lighting_turret'].stunDuration);
                 }
             }
-
             this.createImpactEffect(currentPos, this.el.effect);
-
             this.el.parentNode.removeChild(this.el);
             return;
         }
@@ -131,7 +145,6 @@ AFRAME.registerComponent('projectile', {
         this.el.object3D.position.y += (dy / dist) * move;
         this.el.object3D.position.z += (dz / dist) * move;
     },
-
     createImpactEffect: function(pos, effect) {
         let impact = document.createElement('a-entity');
         impact.setAttribute('geometry', 'primitive: sphere; radius: 0.1');
@@ -143,7 +156,6 @@ AFRAME.registerComponent('projectile', {
         }
 
         impact.setAttribute('position', pos);
-
         impact.setAttribute('animation__scale', 'property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad');
         impact.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 200; easing: easeOutQuad');
         this.el.sceneEl.appendChild(impact);

@@ -8,8 +8,6 @@ AFRAME.registerComponent('tower-menu', {
         menu.setAttribute('position', '0 0.08 -0.08');
         menu.setAttribute('rotation', '-45 0 0');
 
-        // --- STYLE MÉDIÉVAL ---
-        // Bordure Or massif (#d4af37), opacité plus élevée
         this.bgBorder = document.createElement('a-plane');
         this.bgBorder.setAttribute('width', '0.36');
         this.bgBorder.setAttribute('height', '0.25');
@@ -17,7 +15,6 @@ AFRAME.registerComponent('tower-menu', {
         this.bgBorder.setAttribute('opacity', '0.8');
         menu.appendChild(this.bgBorder);
 
-        // Fond Bois Sombre (#2c1308)
         this.bg = document.createElement('a-plane');
         this.bg.setAttribute('width', '0.34');
         this.bg.setAttribute('height', '0.24');
@@ -25,16 +22,13 @@ AFRAME.registerComponent('tower-menu', {
         this.bg.setAttribute('opacity', '0.98');
         this.bg.setAttribute('position', '0 0 0.005');
         menu.appendChild(this.bg);
-        // -----------------------
 
-        // Conteneur pour la miniature 3D (inchangé)
         this.modelContainer = document.createElement('a-entity');
         this.modelContainer.setAttribute('position', '0 0.05 0.05');
         this.modelContainer.setAttribute('scale', '0.2 0.2 0.2');
         this.modelContainer.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear');
         menu.appendChild(this.modelContainer);
 
-        // Nom de la tour : Couleur Parchemin clair (#f4e4bc) pour la lisibilité
         this.nameEl = document.createElement('a-text');
         this.nameEl.setAttribute('align', 'center');
         this.nameEl.setAttribute('width', '1.2');
@@ -42,7 +36,6 @@ AFRAME.registerComponent('tower-menu', {
         this.nameEl.setAttribute('color', '#f4e4bc');
         menu.appendChild(this.nameEl);
 
-        // Coût de la tour : Couleur Or (#d4af37)
         this.costEl = document.createElement('a-text');
         this.costEl.setAttribute('align', 'center');
         this.costEl.setAttribute('width', '1.0');
@@ -81,7 +74,7 @@ AFRAME.registerComponent('tower-menu', {
         this.modelContainer.appendChild(miniModel);
     }
 });
-// ... le reste du fichier (ar-game-controller) ne change pas ...
+
 AFRAME.registerComponent('ar-game-controller', {
     init: function () {
         this.reticle = document.getElementById('reticle');
@@ -91,6 +84,10 @@ AFRAME.registerComponent('ar-game-controller', {
         this.hitTestSource = null;
         this.inputSource = null;
         this.isValidPlacement = false;
+
+        // Variables en cache pour l'optimisation
+        this.upVector = new THREE.Vector3();
+        this.cameraEl = null;
 
         this.el.sceneEl.renderer.xr.addEventListener('sessionstart', async () => {
             const session = this.el.sceneEl.renderer.xr.getSession();
@@ -112,12 +109,18 @@ AFRAME.registerComponent('ar-game-controller', {
         const frame = this.el.sceneEl.frame;
         const refSpace = this.el.sceneEl.renderer.xr.getReferenceSpace();
 
+        // Met la caméra en cache (évite de requêter le DOM à chaque image)
+        if (!this.cameraEl) {
+            this.cameraEl = document.querySelector('a-camera');
+        }
+
         if (frame) {
             const results = frame.getHitTestResults(this.hitTestSource);
             if (results.length > 0) {
                 const pose = results[0].getPose(refSpace);
 
-                if (new THREE.Vector3(0, 1, 0).applyQuaternion(pose.transform.orientation).y < 0.8) {
+                this.upVector.set(0, 1, 0).applyQuaternion(pose.transform.orientation);
+                if (this.upVector.y < 0.8) {
                     this.reticle.setAttribute('visible', 'false');
                     this.isValidPlacement = false;
                     return;
@@ -134,36 +137,36 @@ AFRAME.registerComponent('ar-game-controller', {
                 let rayPose = frame.getPose(this.inputSource.targetRaySpace, refSpace);
                 if (rayPose) {
                     let cp = rayPose.transform.position;
-                    let distToController = Math.sqrt(Math.pow(cp.x - hitPos.x, 2) + Math.pow(cp.y - hitPos.y, 2) + Math.pow(cp.z - hitPos.z, 2));
-                    if (distToController < 0.35) {
+                    // Optimisation maths (carrés)
+                    let dRaySq = Math.pow(cp.x - hitPos.x, 2) + Math.pow(cp.y - hitPos.y, 2) + Math.pow(cp.z - hitPos.z, 2);
+                    if (dRaySq < 0.1225) { // 0.35 * 0.35
                         isValid = false;
                     }
                 }
 
-                let cameraEl = document.querySelector('a-camera');
-                if (cameraEl) {
-                    let camPos = cameraEl.object3D.position;
-                    let distToCam = Math.sqrt(Math.pow(camPos.x - hitPos.x, 2) + Math.pow(camPos.z - hitPos.z, 2));
-                    if (distToCam < 0.4) {
+                if (this.cameraEl && isValid) {
+                    let camPos = this.cameraEl.object3D.position;
+                    let dCamSq = Math.pow(camPos.x - hitPos.x, 2) + Math.pow(camPos.z - hitPos.z, 2);
+                    if (dCamSq < 0.16) { // 0.4 * 0.4
                         isValid = false;
                     }
                 }
 
                 let gameSystem = this.el.sceneEl.systems['game-manager'];
 
-                if (gameSystem && gameSystem.gameState === 'playing') {
+                if (gameSystem && gameSystem.gameState === 'playing' && isValid) {
                     let basePos = gameSystem.basePosition;
-                    let distToBase = Math.sqrt(Math.pow(basePos.x - hitPos.x, 2) + Math.pow(basePos.z - hitPos.z, 2));
-                    if (distToBase < 0.6) {
+                    let dBaseSq = Math.pow(basePos.x - hitPos.x, 2) + Math.pow(basePos.z - hitPos.z, 2);
+                    if (dBaseSq < 0.7225) { // 0.85 * 0.85
                         isValid = false;
                     }
 
                     if (isValid) {
-                        let towers = document.querySelectorAll('[tower-logic]');
+                        let towers = gameSystem.towers;
                         for (let i = 0; i < towers.length; i++) {
                             let tPos = towers[i].object3D.position;
-                            let distToTower = Math.sqrt(Math.pow(tPos.x - hitPos.x, 2) + Math.pow(tPos.z - hitPos.z, 2));
-                            if (distToTower < 0.5) {
+                            let dTtSq = Math.pow(tPos.x - hitPos.x, 2) + Math.pow(tPos.z - hitPos.z, 2);
+                            if (dTtSq < 0.5625) { // 0.75 * 0.75
                                 isValid = false;
                                 break;
                             }

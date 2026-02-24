@@ -8,10 +8,36 @@ AFRAME.registerSystem('game-manager', {
         this.basePosition = new THREE.Vector3(0, 0, 0);
         this.selectedTowerType = 'basic_turret';
 
+        // --- OPTIMISATION : Registres pour éviter les querySelectorAll ---
+        this.towers = [];
+        this.shieldTowers = [];
+        this.enemies = [];
+
         this.hpText = document.getElementById('hud-hp');
         this.goldText = document.getElementById('hud-gold');
         this.gameOverPanel = document.getElementById('game-over');
         this.updateUI();
+    },
+
+    // Méthodes pour maintenir le registre à jour instantanément
+    registerTower: function(el, isShield) {
+        this.towers.push(el);
+        if(isShield) this.shieldTowers.push(el);
+    },
+    unregisterTower: function(el, isShield) {
+        let i = this.towers.indexOf(el);
+        if(i > -1) this.towers.splice(i, 1);
+        if(isShield) {
+            let j = this.shieldTowers.indexOf(el);
+            if(j > -1) this.shieldTowers.splice(j, 1);
+        }
+    },
+    registerEnemy: function(el) {
+        this.enemies.push(el);
+    },
+    unregisterEnemy: function(el) {
+        let i = this.enemies.indexOf(el);
+        if(i > -1) this.enemies.splice(i, 1);
     },
 
     setBasePosition: function(pos) {
@@ -20,13 +46,12 @@ AFRAME.registerSystem('game-manager', {
     },
 
     updateUI: function() {
-        // Ajout de l'écart (espaces) entre le texte et la valeur
         if(this.hpText) this.hpText.setAttribute('value', "HP :  " + this.lives);
         if(this.goldText) this.goldText.setAttribute('value', "GOLD :  " + this.money);
     },
+
     tryBuyTower: function (cost) {
         if (this.isGameOver || this.gameState !== 'playing') return false;
-
         if (this.money >= cost) {
             this.money -= cost;
             this.updateUI();
@@ -34,11 +59,13 @@ AFRAME.registerSystem('game-manager', {
         }
         return false;
     },
+
     addMoney: function(amount) {
         if (this.isGameOver) return;
         this.money += amount;
         this.updateUI();
     },
+
     takeDamage: function (amount) {
         if (this.isGameOver) return;
         this.lives -= amount;
@@ -51,6 +78,7 @@ AFRAME.registerSystem('game-manager', {
         }
         if (this.lives <= 0) this.triggerGameOver();
     },
+
     triggerGameOver: function() {
         this.isGameOver = true;
         if (this.gameOverPanel) this.gameOverPanel.style.display = 'flex';

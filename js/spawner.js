@@ -59,12 +59,10 @@ AFRAME.registerComponent('environment-manager', {
         });
     },
     tick: function () {
-        const sceneEl = this.el;
-        const frame = sceneEl.frame;
-        const renderer = sceneEl.renderer;
+        const frame = this.el.sceneEl.frame;
+        const renderer = this.el.sceneEl.renderer;
 
         if (!frame || !renderer || !renderer.xr) return;
-
         const refSpace = renderer.xr.getReferenceSpace();
         if (!refSpace) return;
 
@@ -81,7 +79,6 @@ AFRAME.registerComponent('environment-manager', {
                     meshObj.renderOrder = -1;
 
                     this.obstacleGroup.add(meshObj);
-
                     this.meshes.set(xrMesh, meshObj);
                     needsUpdate = true;
                 } else if (meshObj.userData.lastChangedTime !== xrMesh.lastChangedTime) {
@@ -117,7 +114,6 @@ AFRAME.registerComponent('environment-manager', {
 });
 
 AFRAME.registerComponent('enemy-spawner', {
-    // spawnInterval réduit de 2500 à 2200 pour un rythme un peu plus soutenu
     schema: { waveInterval: { type: 'number', default: 5000 }, spawnInterval: { type: 'number', default: 2200 } },
     init: function () {
         if (!this.el.sceneEl.hasAttribute('environment-manager')) this.el.sceneEl.setAttribute('environment-manager', '');
@@ -143,7 +139,6 @@ AFRAME.registerComponent('enemy-spawner', {
     },
     startNextWave: function() {
         this.waveCount++;
-        // Vague plus dense : +3 ennemis par vague au lieu de +2
         this.enemiesPerWave += 3;
         this.enemiesSpawnedInWave = 0;
         this.isWaveActive = true;
@@ -200,7 +195,13 @@ AFRAME.registerComponent('enemy-spawner', {
 
 AFRAME.registerComponent('enemy-stats', {
     schema: { hp: {default: 1}, speed: {default: 1}, damage: {default: 1}, reward: {default: 10}, offsetY: {default: 0}, isFlying: {default: false}, attackAnim: {default: 'Attack'}, walkAnim: {default: 'Walk'}, hitAnim: {default: 'HitReact'}, deathAnim: {default: 'Death'} },
-    init: function() { this.isDead = false; this.isAttacking = false; this.hitTimeout = null; this.isStunned = false; this.stunTimeout = null; },
+    init: function() {
+        this.isDead = false; this.isAttacking = false; this.hitTimeout = null; this.isStunned = false; this.stunTimeout = null;
+        this.el.sceneEl.systems['game-manager'].registerEnemy(this.el);
+    },
+    remove: function() {
+        this.el.sceneEl.systems['game-manager'].unregisterEnemy(this.el);
+    },
     takeHit: function(damage = 1) {
         if (this.isDead) return;
         this.data.hp -= damage;
@@ -235,35 +236,52 @@ AFRAME.registerComponent('enemy-stats', {
 
 AFRAME.registerComponent('enemy-walker', {
     init: function() {
-        this.raycaster = new THREE.Raycaster();
+        this.raycasterCenter = new THREE.Raycaster();
+        this.raycasterLeft = new THREE.Raycaster();
+        this.raycasterRight = new THREE.Raycaster();
+
+        // OPTIMISATION : Pré-allocation des variables pour ne pas saturer la mémoire (évite les lags)
         this.rayOrigin = new THREE.Vector3();
-        this.rayDir = new THREE.Vector3();
+        this.dirCenter = new THREE.Vector3();
+        this.dirLeft = new THREE.Vector3();
+        this.dirRight = new THREE.Vector3();
 
         this.lastDistToTarget = 9999;
         this.checkStuckTimer = 0;
         this.stuckCounter = 0;
         this.ghostMode = false;
         this.ghostTimer = 0;
+
+        this.avoidanceDirection = (Math.random() > 0.5) ? 1 : -1;
+
+        // Variables pour le throttling du raycast environnement
+        this.envScanTimer = 0;
+        this.envRepX = 0;
+        this.envRepZ = 0;
+        this.envSpeedMult = 1.0;
     },
     tick: function (time, timeDelta) {
         let stats = this.el.components['enemy-stats'];
         if(!stats || stats.isDead || stats.isAttacking || stats.isStunned) return;
 
         let pos = this.el.object3D.position;
+        let mobScale = this.el.object3D.scale.x;
+
         let gameSystem = this.el.sceneEl.systems['game-manager'];
         let targetPos = gameSystem ? gameSystem.basePosition : new THREE.Vector3(0,0,0);
         let targetTower = null;
 
-        let shieldTowers = document.querySelectorAll('.shield-tower');
-        let minDist = Infinity;
+        let shieldTowers = gameSystem ? gameSystem.shieldTowers : [];
+        let minDistSq = 9.0; // 3 mètres au carré
 
-        shieldTowers.forEach(shield => {
-            let dist = pos.distanceTo(shield.object3D.position);
-            if (dist < 3.0 && dist < minDist) {
-                minDist = dist;
+        for (let i = 0; i < shieldTowers.length; i++) {
+            let shield = shieldTowers[i];
+            let distSq = pos.distanceToSquared(shield.object3D.position);
+            if (distSq < 9.0 && distSq < minDistSq) {
+                minDistSq = distSq;
                 targetTower = shield;
             }
-        });
+        }
 
         if (targetTower) {
             targetPos = targetTower.object3D.position;
@@ -320,18 +338,21 @@ AFRAME.registerComponent('enemy-walker', {
         let speedMultiplier = 1.0;
 
         if (!stats.data.isFlying) {
-            let towers = document.querySelectorAll('[tower-logic]');
-            let avoidanceRadius = 0.7;
+            let towers = gameSystem ? gameSystem.towers : [];
+            let avoidanceRadius = 0.7 + mobScale;
+            let avoidanceRadiusSq = avoidanceRadius * avoidanceRadius;
 
-            towers.forEach(tower => {
-                if (tower === targetTower) return;
+            for (let i = 0; i < towers.length; i++) {
+                let tower = towers[i];
+                if (tower === targetTower) continue;
 
                 let tPos = tower.object3D.position;
                 let tDx = pos.x - tPos.x;
                 let tDz = pos.z - tPos.z;
-                let tDist = Math.sqrt(tDx*tDx + tDz*tDz);
+                let tDistSq = tDx*tDx + tDz*tDz;
 
-                if (tDist < avoidanceRadius && tDist > 0.01) {
+                if (tDistSq < avoidanceRadiusSq && tDistSq > 0.0001) {
+                    let tDist = Math.sqrt(tDistSq);
                     let force = Math.pow((avoidanceRadius - tDist) / avoidanceRadius, 2);
                     repX += (tDx / tDist) * force * 4.0;
                     repZ += (tDz / tDist) * force * 4.0;
@@ -343,43 +364,82 @@ AFRAME.registerComponent('enemy-walker', {
                     repZ += (tDx / tDist) * force * 3.0 * sign;
                     speedMultiplier = 1.5;
                 }
-            });
+            }
 
-            if (!this.ghostMode) {
-                let envManager = this.el.sceneEl.components['environment-manager'];
-                if (envManager && envManager.obstacleGroup) {
-                    this.rayOrigin.copy(pos);
-                    this.rayOrigin.y += 0.2;
+            // OPTIMISATION RAYCASTING : Fait le calcul des meubles seulement toutes les 100ms (10 fois par sec)
+            this.envScanTimer -= timeDelta;
+            if (this.envScanTimer <= 0) {
+                this.envScanTimer = 100; // Reset
+                this.envRepX = 0;
+                this.envRepZ = 0;
+                this.envSpeedMult = 1.0;
 
-                    let currentHeadingX = Math.sin(this.el.object3D.rotation.y);
-                    let currentHeadingZ = Math.cos(this.el.object3D.rotation.y);
+                if (!this.ghostMode) {
+                    let envManager = this.el.sceneEl.components['environment-manager'];
+                    if (envManager && envManager.obstacleGroup) {
+                        this.rayOrigin.copy(pos);
+                        this.rayOrigin.y += 0.2;
 
-                    this.rayDir.set(currentHeadingX, 0, currentHeadingZ).normalize();
-                    this.raycaster.set(this.rayOrigin, this.rayDir);
-                    this.raycaster.far = 0.8;
+                        let currentAngle = this.el.object3D.rotation.y;
+                        let spread = 0.8;
 
-                    let intersects = this.raycaster.intersectObject(envManager.obstacleGroup, true);
+                        this.dirCenter.set(Math.sin(currentAngle), 0, Math.cos(currentAngle)).normalize();
+                        this.dirLeft.set(Math.sin(currentAngle + spread), 0, Math.cos(currentAngle + spread)).normalize();
+                        this.dirRight.set(Math.sin(currentAngle - spread), 0, Math.cos(currentAngle - spread)).normalize();
 
-                    if (intersects.length > 0) {
-                        let hit = intersects[0];
-                        if (hit.distance > 0.05 && hit.face) {
-                            let force = Math.pow((0.8 - hit.distance) / 0.8, 2) * 6.0;
-                            let normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
+                        this.raycasterCenter.set(this.rayOrigin, this.dirCenter);
+                        this.raycasterLeft.set(this.rayOrigin, this.dirLeft);
+                        this.raycasterRight.set(this.rayOrigin, this.dirRight);
 
-                            repX += normal.x * force;
-                            repZ += normal.z * force;
+                        let scanDist = 0.8 + (mobScale * 2.0);
 
-                            let cross = (dirX * normal.z) - (dirZ * normal.x);
-                            let sign = cross > 0 ? 1 : -1;
-                            repX += (-normal.z) * force * 3.0 * sign;
-                            repZ += (normal.x) * force * 3.0 * sign;
+                        this.raycasterCenter.far = scanDist;
+                        this.raycasterLeft.far = scanDist;
+                        this.raycasterRight.far = scanDist;
 
-                            speedMultiplier = 2.5;
+                        let hitCenter = this.raycasterCenter.intersectObject(envManager.obstacleGroup, true);
+                        let hitLeft = this.raycasterLeft.intersectObject(envManager.obstacleGroup, true);
+                        let hitRight = this.raycasterRight.intersectObject(envManager.obstacleGroup, true);
+
+                        let distCenter = hitCenter.length > 0 ? hitCenter[0].distance : scanDist;
+                        let distLeft = hitLeft.length > 0 ? hitLeft[0].distance : scanDist;
+                        let distRight = hitRight.length > 0 ? hitRight[0].distance : scanDist;
+
+                        if (distCenter < scanDist || distLeft < scanDist || distRight < scanDist) {
+                            if (distLeft > distRight + 0.1) {
+                                this.avoidanceDirection = -1;
+                            } else if (distRight > distLeft + 0.1) {
+                                this.avoidanceDirection = 1;
+                            }
+
+                            let minObstacleDist = Math.min(distCenter, distLeft, distRight);
+                            let force = Math.pow((scanDist - minObstacleDist) / scanDist, 2) * 12.0;
+
+                            let tangentX = -this.dirCenter.z * this.avoidanceDirection;
+                            let tangentZ = this.dirCenter.x * this.avoidanceDirection;
+
+                            this.envRepX = tangentX * force;
+                            this.envRepZ = tangentZ * force;
+
+                            let backupDist = 0.3 + mobScale;
+                            if (distCenter < backupDist) {
+                                this.envRepX -= this.dirCenter.x * force * 3.0;
+                                this.envRepZ -= this.dirCenter.z * force * 3.0;
+                            }
+
+                            this.envSpeedMult = 2.0;
                         }
                     }
                 }
+            }
+
+            // Applique la force environnementale en cache
+            if (!this.ghostMode) {
+                repX += this.envRepX;
+                repZ += this.envRepZ;
+                speedMultiplier = Math.max(speedMultiplier, this.envSpeedMult);
             } else {
-                speedMultiplier = 1.5;
+                speedMultiplier = Math.max(speedMultiplier, 1.5);
             }
         }
 
