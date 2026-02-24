@@ -44,9 +44,13 @@ AFRAME.registerComponent('tower-menu', {
 AFRAME.registerComponent('ar-game-controller', {
     init: function () {
         this.reticle = document.getElementById('reticle');
+        this.ring = this.reticle.querySelector('a-ring');
+        this.cylinder = this.reticle.querySelector('a-cylinder');
+
         this.hitTestSource = null;
         this.inputSource = null;
-        this.isHitTestReady = false;
+        this.isValidPlacement = false;
+
         this.el.sceneEl.renderer.xr.addEventListener('sessionstart', async () => {
             const session = this.el.sceneEl.renderer.xr.getSession();
             session.addEventListener('inputsourceschange', () => this.checkInputSources(session));
@@ -66,47 +70,81 @@ AFRAME.registerComponent('ar-game-controller', {
         if (!this.hitTestSource) return;
         const frame = this.el.sceneEl.frame;
         const refSpace = this.el.sceneEl.renderer.xr.getReferenceSpace();
+
         if (frame) {
             const results = frame.getHitTestResults(this.hitTestSource);
             if (results.length > 0) {
                 const pose = results[0].getPose(refSpace);
+
                 if (new THREE.Vector3(0, 1, 0).applyQuaternion(pose.transform.orientation).y < 0.8) {
                     this.reticle.setAttribute('visible', 'false');
-                    this.isHitTestReady = false;
+                    this.isValidPlacement = false;
                     return;
                 }
 
                 let hitPos = pose.transform.position;
+
+                this.reticle.setAttribute('visible', 'true');
+                this.reticle.object3D.position.copy(hitPos);
+                this.reticle.object3D.quaternion.identity();
+
+                let isValid = true;
+
                 let rayPose = frame.getPose(this.inputSource.targetRaySpace, refSpace);
                 if (rayPose) {
                     let cp = rayPose.transform.position;
                     let distToController = Math.sqrt(Math.pow(cp.x - hitPos.x, 2) + Math.pow(cp.y - hitPos.y, 2) + Math.pow(cp.z - hitPos.z, 2));
-
-                    if (distToController < 0.2) {
-                        this.reticle.setAttribute('visible', 'false');
-                        this.isHitTestReady = false;
-                        return;
+                    if (distToController < 0.35) {
+                        isValid = false;
                     }
                 }
 
                 let cameraEl = document.querySelector('a-camera');
-                let cameraPos = cameraEl ? cameraEl.object3D.position : new THREE.Vector3(0,0,0);
-                let dx = cameraPos.x - hitPos.x, dz = cameraPos.z - hitPos.z;
-
-                if (Math.sqrt(dx*dx + dz*dz) > 0.3) {
-                    this.reticle.setAttribute('visible', 'true');
-                    this.reticle.object3D.position.copy(hitPos);
-                    this.reticle.object3D.quaternion.identity();
-                    this.isHitTestReady = true;
-                    return;
+                if (cameraEl) {
+                    let camPos = cameraEl.object3D.position;
+                    let distToCam = Math.sqrt(Math.pow(camPos.x - hitPos.x, 2) + Math.pow(camPos.z - hitPos.z, 2));
+                    if (distToCam < 0.4) {
+                        isValid = false;
+                    }
                 }
+
+                let gameSystem = this.el.sceneEl.systems['game-manager'];
+
+                if (gameSystem && gameSystem.gameState === 'playing') {
+                    let basePos = gameSystem.basePosition;
+                    let distToBase = Math.sqrt(Math.pow(basePos.x - hitPos.x, 2) + Math.pow(basePos.z - hitPos.z, 2));
+                    if (distToBase < 0.6) {
+                        isValid = false;
+                    }
+
+                    if (isValid) {
+                        let towers = document.querySelectorAll('[tower-logic]');
+                        for (let i = 0; i < towers.length; i++) {
+                            let tPos = towers[i].object3D.position;
+                            let distToTower = Math.sqrt(Math.pow(tPos.x - hitPos.x, 2) + Math.pow(tPos.z - hitPos.z, 2));
+                            if (distToTower < 0.5) {
+                                isValid = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                this.isValidPlacement = isValid;
+
+                let color = isValid ? '#00FF00' : '#FF0000';
+                if (this.ring) this.ring.setAttribute('color', color);
+                if (this.cylinder) this.cylinder.setAttribute('color', color);
+
+                return;
             }
         }
+
         this.reticle.setAttribute('visible', 'false');
-        this.isHitTestReady = false;
+        this.isValidPlacement = false;
     },
     tryBuild: function() {
-        if (this.isHitTestReady && this.reticle.getAttribute('visible') === true) {
+        if (this.reticle.getAttribute('visible') === true && this.isValidPlacement) {
             let gameSystem = this.el.sceneEl.systems['game-manager'];
             if (!gameSystem) return;
 
@@ -124,11 +162,11 @@ AFRAME.registerComponent('ar-game-controller', {
     },
     spawnBase: function(pos) {
         let base = document.createElement('a-entity');
-        base.setAttribute('geometry', 'primitive: octahedron; radius: 0.15');
+        base.setAttribute('geometry', 'primitive: octahedron; radius: 0.4');
         base.setAttribute('material', 'color: #00ffff; metalness: 0.8; roughness: 0.2');
-        base.setAttribute('position', {x: pos.x, y: pos.y + 0.2, z: pos.z});
+        base.setAttribute('position', {x: pos.x, y: pos.y + 0.5, z: pos.z});
         base.setAttribute('animation__rot', 'property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear');
-        base.setAttribute('animation__bob', 'property: position; dir: alternate; dur: 2000; easing: easeInOutSine; to: ' + pos.x + ' ' + (pos.y + 0.3) + ' ' + pos.z);
+        base.setAttribute('animation__bob', 'property: position; dir: alternate; dur: 2000; easing: easeInOutSine; to: ' + pos.x + ' ' + (pos.y + 0.7) + ' ' + pos.z);
         base.setAttribute('id', 'player-base');
         this.el.sceneEl.appendChild(base);
     },
