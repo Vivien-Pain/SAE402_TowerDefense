@@ -39,25 +39,88 @@ AFRAME.registerComponent('mob-sound', {
     }
 });
 
-AFRAME.registerComponent('plane-manager', {
+AFRAME.registerComponent('environment-manager', {
     init: function () {
-        this.el.sceneEl.addEventListener('child-attached', (evt) => {
-            let el = evt.detail.el;
+        this.meshes = new Map();
+        this.occlusionMaterial = new THREE.MeshBasicMaterial({ colorWrite: false });
+
+        this.obstacleGroup = new THREE.Group();
+        this.el.object3D.add(this.obstacleGroup);
+
+        this.el.addEventListener('child-attached', (evt) => {
+            let childEl = evt.detail.el;
             setTimeout(() => {
-                if (el.components && el.components['xr-plane'] && el.components['xr-plane'].data.orientation === 'horizontal') {
-                    el.classList.add('climbable');
-                    el.setAttribute('material', { color: '#00FF00', opacity: 0.3, transparent: true, wireframe: true, side: 'double' });
-                    el.object3D.visible = true;
+                if (childEl.components && childEl.components['xr-plane'] && childEl.components['xr-plane'].data.orientation === 'horizontal') {
+                    childEl.classList.add('climbable');
+                    childEl.setAttribute('material', { color: '#00FF00', opacity: 0.3, transparent: true, wireframe: true, side: 'double' });
+                    childEl.object3D.visible = true;
                 }
             }, 500);
         });
+    },
+    tick: function () {
+        const sceneEl = this.el;
+        const frame = sceneEl.frame;
+        const renderer = sceneEl.renderer;
+
+        if (!frame || !renderer || !renderer.xr) return;
+
+        const refSpace = renderer.xr.getReferenceSpace();
+        if (!refSpace) return;
+
+        if (frame.detectedMeshes) {
+            const currentMeshes = frame.detectedMeshes;
+
+            currentMeshes.forEach(xrMesh => {
+                let meshObj = this.meshes.get(xrMesh);
+                let needsUpdate = false;
+
+                if (!meshObj) {
+                    const geometry = new THREE.BufferGeometry();
+                    meshObj = new THREE.Mesh(geometry, this.occlusionMaterial);
+                    meshObj.renderOrder = -1;
+
+                    this.obstacleGroup.add(meshObj);
+
+                    this.meshes.set(xrMesh, meshObj);
+                    needsUpdate = true;
+                } else if (meshObj.userData.lastChangedTime !== xrMesh.lastChangedTime) {
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    meshObj.geometry.setAttribute('position', new THREE.BufferAttribute(xrMesh.vertices, 3));
+                    meshObj.geometry.setIndex(new THREE.BufferAttribute(xrMesh.indices, 1));
+                    meshObj.geometry.computeVertexNormals();
+                    meshObj.userData.lastChangedTime = xrMesh.lastChangedTime;
+                }
+
+                const pose = frame.getPose(xrMesh.meshSpace, refSpace);
+                if (pose) {
+                    meshObj.matrix.fromArray(pose.transform.matrix);
+                    meshObj.matrixAutoUpdate = false;
+                    meshObj.visible = true;
+                } else {
+                    meshObj.visible = false;
+                }
+            });
+
+            for (let [xrMesh, meshObj] of this.meshes.entries()) {
+                if (!currentMeshes.has(xrMesh)) {
+                    this.obstacleGroup.remove(meshObj);
+                    meshObj.geometry.dispose();
+                    this.meshes.delete(xrMesh);
+                }
+            }
+        }
     }
 });
 
 AFRAME.registerComponent('enemy-spawner', {
-    schema: { waveInterval: { type: 'number', default: 5000 }, spawnInterval: { type: 'number', default: 3000 } },
+    // spawnInterval réduit de 2500 à 2200 pour un rythme un peu plus soutenu
+    schema: { waveInterval: { type: 'number', default: 5000 }, spawnInterval: { type: 'number', default: 2200 } },
     init: function () {
-        if (!this.el.sceneEl.hasAttribute('plane-manager')) this.el.sceneEl.setAttribute('plane-manager', '');
+        if (!this.el.sceneEl.hasAttribute('environment-manager')) this.el.sceneEl.setAttribute('environment-manager', '');
         this.timer = 0; this.waveCount = 1; this.enemiesSpawnedInWave = 0;
         this.isWaveActive = true; this.enemiesPerWave = 5;
     },
@@ -79,7 +142,12 @@ AFRAME.registerComponent('enemy-spawner', {
         }
     },
     startNextWave: function() {
-        this.waveCount++; this.enemiesPerWave += 2; this.enemiesSpawnedInWave = 0; this.isWaveActive = true;
+        this.waveCount++;
+        // Vague plus dense : +3 ennemis par vague au lieu de +2
+        this.enemiesPerWave += 3;
+        this.enemiesSpawnedInWave = 0;
+        this.isWaveActive = true;
+
         let hud = document.getElementById('hud-hp');
         if(hud) {
             let oldColor = hud.getAttribute('color');
@@ -166,6 +234,17 @@ AFRAME.registerComponent('enemy-stats', {
 });
 
 AFRAME.registerComponent('enemy-walker', {
+    init: function() {
+        this.raycaster = new THREE.Raycaster();
+        this.rayOrigin = new THREE.Vector3();
+        this.rayDir = new THREE.Vector3();
+
+        this.lastDistToTarget = 9999;
+        this.checkStuckTimer = 0;
+        this.stuckCounter = 0;
+        this.ghostMode = false;
+        this.ghostTimer = 0;
+    },
     tick: function (time, timeDelta) {
         let stats = this.el.components['enemy-stats'];
         if(!stats || stats.isDead || stats.isAttacking || stats.isStunned) return;
@@ -209,11 +288,36 @@ AFRAME.registerComponent('enemy-walker', {
             return;
         }
 
+        this.checkStuckTimer += timeDelta;
+        if (this.checkStuckTimer > 1000) {
+            if (this.lastDistToTarget - distToTarget < 0.05) {
+                this.stuckCounter++;
+            } else {
+                this.stuckCounter = 0;
+            }
+            this.lastDistToTarget = distToTarget;
+            this.checkStuckTimer = 0;
+        }
+
+        if (this.stuckCounter >= 2 && !this.ghostMode) {
+            this.ghostMode = true;
+            this.ghostTimer = 4000;
+            this.stuckCounter = 0;
+        }
+
+        if (this.ghostMode) {
+            this.ghostTimer -= timeDelta;
+            if (this.ghostTimer <= 0) {
+                this.ghostMode = false;
+            }
+        }
+
         let dirX = dx / distToTarget;
         let dirZ = dz / distToTarget;
 
         let repX = 0;
         let repZ = 0;
+        let speedMultiplier = 1.0;
 
         if (!stats.data.isFlying) {
             let towers = document.querySelectorAll('[tower-logic]');
@@ -229,7 +333,6 @@ AFRAME.registerComponent('enemy-walker', {
 
                 if (tDist < avoidanceRadius && tDist > 0.01) {
                     let force = Math.pow((avoidanceRadius - tDist) / avoidanceRadius, 2);
-
                     repX += (tDx / tDist) * force * 4.0;
                     repZ += (tDz / tDist) * force * 4.0;
 
@@ -238,8 +341,46 @@ AFRAME.registerComponent('enemy-walker', {
 
                     repX += (-tDz / tDist) * force * 3.0 * sign;
                     repZ += (tDx / tDist) * force * 3.0 * sign;
+                    speedMultiplier = 1.5;
                 }
             });
+
+            if (!this.ghostMode) {
+                let envManager = this.el.sceneEl.components['environment-manager'];
+                if (envManager && envManager.obstacleGroup) {
+                    this.rayOrigin.copy(pos);
+                    this.rayOrigin.y += 0.2;
+
+                    let currentHeadingX = Math.sin(this.el.object3D.rotation.y);
+                    let currentHeadingZ = Math.cos(this.el.object3D.rotation.y);
+
+                    this.rayDir.set(currentHeadingX, 0, currentHeadingZ).normalize();
+                    this.raycaster.set(this.rayOrigin, this.rayDir);
+                    this.raycaster.far = 0.8;
+
+                    let intersects = this.raycaster.intersectObject(envManager.obstacleGroup, true);
+
+                    if (intersects.length > 0) {
+                        let hit = intersects[0];
+                        if (hit.distance > 0.05 && hit.face) {
+                            let force = Math.pow((0.8 - hit.distance) / 0.8, 2) * 6.0;
+                            let normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
+
+                            repX += normal.x * force;
+                            repZ += normal.z * force;
+
+                            let cross = (dirX * normal.z) - (dirZ * normal.x);
+                            let sign = cross > 0 ? 1 : -1;
+                            repX += (-normal.z) * force * 3.0 * sign;
+                            repZ += (normal.x) * force * 3.0 * sign;
+
+                            speedMultiplier = 2.5;
+                        }
+                    }
+                }
+            } else {
+                speedMultiplier = 1.5;
+            }
         }
 
         let finalDirX = dirX + repX;
@@ -255,7 +396,7 @@ AFRAME.registerComponent('enemy-walker', {
         let currentAngle = this.el.object3D.rotation.y;
         this.el.object3D.rotation.y += (targetAngle - currentAngle) * 0.2;
 
-        let move = (stats.data.speed * timeDelta) / 1000;
+        let move = (stats.data.speed * speedMultiplier * timeDelta) / 1000;
         this.el.object3D.position.x += finalDirX * move;
         this.el.object3D.position.z += finalDirZ * move;
 

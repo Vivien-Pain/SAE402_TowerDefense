@@ -20,8 +20,9 @@ AFRAME.registerSystem('game-manager', {
     },
 
     updateUI: function() {
-        if(this.hpText) this.hpText.setAttribute('value', "HP: " + this.lives);
-        if(this.goldText) this.goldText.setAttribute('value', "GOLD: " + this.money);
+        // Ajout de l'écart (espaces) entre le texte et la valeur
+        if(this.hpText) this.hpText.setAttribute('value', "HP :  " + this.lives);
+        if(this.goldText) this.goldText.setAttribute('value', "GOLD :  " + this.money);
     },
     tryBuyTower: function (cost) {
         if (this.isGameOver || this.gameState !== 'playing') return false;
@@ -42,10 +43,11 @@ AFRAME.registerSystem('game-manager', {
         if (this.isGameOver) return;
         this.lives -= amount;
         this.updateUI();
+
         let hud = document.querySelector('#hud-group');
         if(hud) {
-            hud.setAttribute('position', '0 0.05 -0.5');
-            setTimeout(() => hud.setAttribute('position', '0 0 -0.5'), 100);
+            hud.setAttribute('position', '0 0.22 -0.6');
+            setTimeout(() => hud.setAttribute('position', '0 0.2 -0.6'), 100);
         }
         if (this.lives <= 0) this.triggerGameOver();
     },

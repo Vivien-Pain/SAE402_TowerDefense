@@ -5,24 +5,52 @@ AFRAME.registerComponent('tower-menu', {
         this.selectedTower = this.towers[this.currentIndex];
 
         let menu = document.createElement('a-entity');
-        menu.setAttribute('position', '0 0.1 -0.1');
+        menu.setAttribute('position', '0 0.08 -0.08');
         menu.setAttribute('rotation', '-45 0 0');
 
+        // --- STYLE MÉDIÉVAL ---
+        // Bordure Or massif (#d4af37), opacité plus élevée
+        this.bgBorder = document.createElement('a-plane');
+        this.bgBorder.setAttribute('width', '0.36');
+        this.bgBorder.setAttribute('height', '0.25');
+        this.bgBorder.setAttribute('color', '#d4af37');
+        this.bgBorder.setAttribute('opacity', '0.8');
+        menu.appendChild(this.bgBorder);
+
+        // Fond Bois Sombre (#2c1308)
         this.bg = document.createElement('a-plane');
-        this.bg.setAttribute('width', '0.35');
-        this.bg.setAttribute('height', '0.1');
-        this.bg.setAttribute('color', '#000');
-        this.bg.setAttribute('opacity', '0.7');
+        this.bg.setAttribute('width', '0.34');
+        this.bg.setAttribute('height', '0.24');
+        this.bg.setAttribute('color', '#2c1308');
+        this.bg.setAttribute('opacity', '0.98');
+        this.bg.setAttribute('position', '0 0 0.005');
         menu.appendChild(this.bg);
+        // -----------------------
 
-        this.textEl = document.createElement('a-text');
-        this.textEl.setAttribute('align', 'center');
-        this.textEl.setAttribute('scale', '0.3 0.3 0.3');
-        this.textEl.setAttribute('position', '0 0 0.01');
-        this.textEl.setAttribute('color', '#FFF');
-        this.updateText();
-        menu.appendChild(this.textEl);
+        // Conteneur pour la miniature 3D (inchangé)
+        this.modelContainer = document.createElement('a-entity');
+        this.modelContainer.setAttribute('position', '0 0.05 0.05');
+        this.modelContainer.setAttribute('scale', '0.2 0.2 0.2');
+        this.modelContainer.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear');
+        menu.appendChild(this.modelContainer);
 
+        // Nom de la tour : Couleur Parchemin clair (#f4e4bc) pour la lisibilité
+        this.nameEl = document.createElement('a-text');
+        this.nameEl.setAttribute('align', 'center');
+        this.nameEl.setAttribute('width', '1.2');
+        this.nameEl.setAttribute('position', '0 -0.03 0.01');
+        this.nameEl.setAttribute('color', '#f4e4bc');
+        menu.appendChild(this.nameEl);
+
+        // Coût de la tour : Couleur Or (#d4af37)
+        this.costEl = document.createElement('a-text');
+        this.costEl.setAttribute('align', 'center');
+        this.costEl.setAttribute('width', '1.0');
+        this.costEl.setAttribute('position', '0 -0.09 0.01');
+        this.costEl.setAttribute('color', '#d4af37');
+        menu.appendChild(this.costEl);
+
+        this.updateMenu();
         this.el.appendChild(menu);
 
         this.el.addEventListener('xbuttondown', () => this.cycleTower());
@@ -31,16 +59,29 @@ AFRAME.registerComponent('tower-menu', {
     cycleTower: function() {
         this.currentIndex = (this.currentIndex + 1) % this.towers.length;
         this.selectedTower = this.towers[this.currentIndex];
-        this.updateText();
+        this.updateMenu();
+
         let gameSystem = this.el.sceneEl.systems['game-manager'];
         if(gameSystem) gameSystem.selectedTowerType = this.selectedTower;
     },
-    updateText: function() {
+    updateMenu: function() {
         let data = TOWER_DATA[this.selectedTower];
-        this.textEl.setAttribute('value', data.name + '\n$' + data.cost);
+
+        this.nameEl.setAttribute('value', data.name);
+        this.costEl.setAttribute('value', 'COST : ' + data.cost + ' G');
+
+        while (this.modelContainer.firstChild) {
+            this.modelContainer.removeChild(this.modelContainer.firstChild);
+        }
+
+        let miniModel = document.createElement('a-entity');
+        miniModel.setAttribute('gltf-model', data.model);
+        miniModel.setAttribute('scale', data.scale);
+        miniModel.setAttribute('position', `0 ${-0.1} 0`);
+        this.modelContainer.appendChild(miniModel);
     }
 });
-
+// ... le reste du fichier (ar-game-controller) ne change pas ...
 AFRAME.registerComponent('ar-game-controller', {
     init: function () {
         this.reticle = document.getElementById('reticle');
