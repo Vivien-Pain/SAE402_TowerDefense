@@ -1,13 +1,12 @@
 AFRAME.registerSystem('game-manager', {
     init: function () {
-        this.money = 100;
+        this.money = 150;
         this.lives = 20;
         this.isGameOver = false;
 
-        // --- NOUVEAUTÉS : État du jeu et position de la base ---
         this.gameState = 'placing_base';
         this.basePosition = new THREE.Vector3(0, 0, 0);
-        // -------------------------------------------------------
+        this.selectedTowerType = 'basic_turret';
 
         this.hpText = document.getElementById('hud-hp');
         this.goldText = document.getElementById('hud-gold');
@@ -15,19 +14,16 @@ AFRAME.registerSystem('game-manager', {
         this.updateUI();
     },
 
-    // --- NOUVEAUTÉ : Fonction pour définir la base ---
     setBasePosition: function(pos) {
         this.basePosition.copy(pos);
         this.gameState = 'playing';
     },
-    // -------------------------------------------------
 
     updateUI: function() {
         if(this.hpText) this.hpText.setAttribute('value', "HP: " + this.lives);
         if(this.goldText) this.goldText.setAttribute('value', "GOLD: " + this.money);
     },
     tryBuyTower: function (cost) {
-        // MODIFIÉ : On empêche d'acheter si le jeu n'a pas commencé
         if (this.isGameOver || this.gameState !== 'playing') return false;
 
         if (this.money >= cost) {

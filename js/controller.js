@@ -1,3 +1,46 @@
+AFRAME.registerComponent('tower-menu', {
+    init: function() {
+        this.towers = Object.keys(TOWER_DATA);
+        this.currentIndex = 0;
+        this.selectedTower = this.towers[this.currentIndex];
+
+        let menu = document.createElement('a-entity');
+        menu.setAttribute('position', '0 0.1 -0.1');
+        menu.setAttribute('rotation', '-45 0 0');
+
+        this.bg = document.createElement('a-plane');
+        this.bg.setAttribute('width', '0.35');
+        this.bg.setAttribute('height', '0.1');
+        this.bg.setAttribute('color', '#000');
+        this.bg.setAttribute('opacity', '0.7');
+        menu.appendChild(this.bg);
+
+        this.textEl = document.createElement('a-text');
+        this.textEl.setAttribute('align', 'center');
+        this.textEl.setAttribute('scale', '0.3 0.3 0.3');
+        this.textEl.setAttribute('position', '0 0 0.01');
+        this.textEl.setAttribute('color', '#FFF');
+        this.updateText();
+        menu.appendChild(this.textEl);
+
+        this.el.appendChild(menu);
+
+        this.el.addEventListener('xbuttondown', () => this.cycleTower());
+        this.el.addEventListener('ybuttondown', () => this.cycleTower());
+    },
+    cycleTower: function() {
+        this.currentIndex = (this.currentIndex + 1) % this.towers.length;
+        this.selectedTower = this.towers[this.currentIndex];
+        this.updateText();
+        let gameSystem = this.el.sceneEl.systems['game-manager'];
+        if(gameSystem) gameSystem.selectedTowerType = this.selectedTower;
+    },
+    updateText: function() {
+        let data = TOWER_DATA[this.selectedTower];
+        this.textEl.setAttribute('value', data.name + '\n$' + data.cost);
+    }
+});
+
 AFRAME.registerComponent('ar-game-controller', {
     init: function () {
         this.reticle = document.getElementById('reticle');
@@ -27,7 +70,6 @@ AFRAME.registerComponent('ar-game-controller', {
             const results = frame.getHitTestResults(this.hitTestSource);
             if (results.length > 0) {
                 const pose = results[0].getPose(refSpace);
-                // Vérification de la surface (doit être horizontale)
                 if (new THREE.Vector3(0, 1, 0).applyQuaternion(pose.transform.orientation).y < 0.8) {
                     this.reticle.setAttribute('visible', 'false');
                     this.isHitTestReady = false;
@@ -35,15 +77,11 @@ AFRAME.registerComponent('ar-game-controller', {
                 }
 
                 let hitPos = pose.transform.position;
-
-                // Calcul de la distance avec la MANETTE
                 let rayPose = frame.getPose(this.inputSource.targetRaySpace, refSpace);
                 if (rayPose) {
                     let cp = rayPose.transform.position;
-                    // Distance en 3D (x, y, z)
                     let distToController = Math.sqrt(Math.pow(cp.x - hitPos.x, 2) + Math.pow(cp.y - hitPos.y, 2) + Math.pow(cp.z - hitPos.z, 2));
 
-                    // Si le curseur est à moins de 20cm (0.2m) de la manette, on annule
                     if (distToController < 0.2) {
                         this.reticle.setAttribute('visible', 'false');
                         this.isHitTestReady = false;
@@ -51,7 +89,6 @@ AFRAME.registerComponent('ar-game-controller', {
                     }
                 }
 
-                // Vérification : Distance avec la CAMERA (tête du joueur)
                 let cameraEl = document.querySelector('a-camera');
                 let cameraPos = cameraEl ? cameraEl.object3D.position : new THREE.Vector3(0,0,0);
                 let dx = cameraPos.x - hitPos.x, dz = cameraPos.z - hitPos.z;
@@ -73,21 +110,18 @@ AFRAME.registerComponent('ar-game-controller', {
             let gameSystem = this.el.sceneEl.systems['game-manager'];
             if (!gameSystem) return;
 
-            // --- MODIFIÉ : Gestion des états ---
             if (gameSystem.gameState === 'placing_base') {
                 this.spawnBase(this.reticle.object3D.position);
                 gameSystem.setBasePosition(this.reticle.object3D.position);
             }
             else if (gameSystem.gameState === 'playing') {
-                let towerType = 'basic_turret';
+                let towerType = gameSystem.selectedTowerType;
                 if (gameSystem.tryBuyTower(TOWER_DATA[towerType].cost)) {
                     this.spawnTower(this.reticle.object3D.position, towerType);
                 }
             }
-            // -----------------------------------
         }
     },
-    // --- NOUVEAUTÉ : Création du visuel de la base ---
     spawnBase: function(pos) {
         let base = document.createElement('a-entity');
         base.setAttribute('geometry', 'primitive: octahedron; radius: 0.15');
@@ -98,7 +132,6 @@ AFRAME.registerComponent('ar-game-controller', {
         base.setAttribute('id', 'player-base');
         this.el.sceneEl.appendChild(base);
     },
-    // -------------------------------------------------
     spawnTower: function(pos, towerType) {
         let data = TOWER_DATA[towerType];
         let tower = document.createElement('a-entity');

@@ -107,86 +107,116 @@ AFRAME.registerComponent('enemy-spawner', {
 
 AFRAME.registerComponent('enemy-stats', {
     schema: { hp: {default: 1}, speed: {default: 1}, damage: {default: 1}, reward: {default: 10}, offsetY: {default: 0}, isFlying: {default: false}, attackAnim: {default: 'Attack'}, walkAnim: {default: 'Walk'}, hitAnim: {default: 'HitReact'}, deathAnim: {default: 'Death'} },
-    init: function() { this.isDead = false; this.isAttacking = false; this.hitTimeout = null; },
-    takeHit: function() {
+    init: function() { this.isDead = false; this.isAttacking = false; this.hitTimeout = null; this.isStunned = false; this.stunTimeout = null; },
+    takeHit: function(damage = 1) {
         if (this.isDead) return;
-        this.data.hp--;
+        this.data.hp -= damage;
         let el = this.el;
         if (this.data.hp <= 0) {
             this.isDead = true;
-            el.setAttribute('animation-mixer', `clip: ${this.data.deathAnim}; loop: once; crossFadeDuration: 0.2`);
+            el.setAttribute('animation-mixer', `clip: ${this.data.deathAnim}; loop: once; crossFadeDuration: 0.2; timeScale: 1`);
             let system = this.el.sceneEl.systems['game-manager'];
             if(system) system.addMoney(this.data.reward);
             setTimeout(() => { if(el.parentNode) el.parentNode.removeChild(el); }, 1500);
-        } else if (!this.isAttacking) {
+        } else if (!this.isAttacking && !this.isStunned) {
             el.setAttribute('animation-mixer', `clip: ${this.data.hitAnim}; loop: once; crossFadeDuration: 0.1`);
             clearTimeout(this.hitTimeout);
             this.hitTimeout = setTimeout(() => {
-                if (!this.isDead && !this.isAttacking) el.setAttribute('animation-mixer', `clip: ${this.data.walkAnim}; loop: repeat; crossFadeDuration: 0.2`);
+                if (!this.isDead && !this.isAttacking && !this.isStunned) el.setAttribute('animation-mixer', `clip: ${this.data.walkAnim}; loop: repeat; crossFadeDuration: 0.2`);
             }, 500);
         }
+    },
+    applyStun: function(duration) {
+        if (this.isDead) return;
+        this.isStunned = true;
+        clearTimeout(this.stunTimeout);
+        this.el.setAttribute('animation-mixer', `timeScale: 0`);
+        this.stunTimeout = setTimeout(() => {
+            this.isStunned = false;
+            if (!this.isDead && !this.isAttacking) {
+                this.el.setAttribute('animation-mixer', `timeScale: 1; clip: ${this.data.walkAnim}; loop: repeat; crossFadeDuration: 0.2`);
+            }
+        }, duration);
     }
 });
 
 AFRAME.registerComponent('enemy-walker', {
     tick: function (time, timeDelta) {
         let stats = this.el.components['enemy-stats'];
-        if(!stats || stats.isDead || stats.isAttacking) return;
+        if(!stats || stats.isDead || stats.isAttacking || stats.isStunned) return;
 
         let pos = this.el.object3D.position;
         let gameSystem = this.el.sceneEl.systems['game-manager'];
         let targetPos = gameSystem ? gameSystem.basePosition : new THREE.Vector3(0,0,0);
+        let targetTower = null;
 
-        // 1. Calcul de l'attraction vers la base
+        let shieldTowers = document.querySelectorAll('.shield-tower');
+        let minDist = Infinity;
+
+        shieldTowers.forEach(shield => {
+            let dist = pos.distanceTo(shield.object3D.position);
+            if (dist < 3.0 && dist < minDist) {
+                minDist = dist;
+                targetTower = shield;
+            }
+        });
+
+        if (targetTower) {
+            targetPos = targetTower.object3D.position;
+        }
+
         let dx = targetPos.x - pos.x;
         let dz = targetPos.z - pos.z;
-        let distToBase = Math.sqrt(dx*dx + dz*dz);
+        let distToTarget = Math.sqrt(dx*dx + dz*dz);
 
-        if (distToBase < 0.3) {
+        if (distToTarget < 0.3) {
             stats.isAttacking = true;
             this.el.setAttribute('animation-mixer', `clip: ${stats.data.attackAnim}; loop: once; crossFadeDuration: 0.2`);
             setTimeout(() => {
-                if(gameSystem) gameSystem.takeDamage(stats.data.damage);
+                if (targetTower) {
+                    let tLogic = targetTower.components['tower-logic'];
+                    if (tLogic) tLogic.takeDamage(stats.data.damage);
+                } else if (gameSystem) {
+                    gameSystem.takeDamage(stats.data.damage);
+                }
                 if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
             }, 1000);
             return;
         }
 
-        // Vecteur de direction normalisé vers la base
-        let dirX = dx / distToBase;
-        let dirZ = dz / distToBase;
+        let dirX = dx / distToTarget;
+        let dirZ = dz / distToTarget;
 
-        // --- NOUVEAUTÉ : Évitement des tours (sauf pour les volants) ---
         let repX = 0;
         let repZ = 0;
 
         if (!stats.data.isFlying) {
             let towers = document.querySelectorAll('[tower-logic]');
-            let avoidanceRadius = 0.35; // Distance à laquelle l'ennemi commence à dévier
+            let avoidanceRadius = 0.7;
 
             towers.forEach(tower => {
+                if (tower === targetTower) return;
+
                 let tPos = tower.object3D.position;
-                let tDx = pos.x - tPos.x; // Vecteur de la tour VERS l'ennemi
+                let tDx = pos.x - tPos.x;
                 let tDz = pos.z - tPos.z;
                 let tDist = Math.sqrt(tDx*tDx + tDz*tDz);
 
-                if (tDist < avoidanceRadius && tDist > 0) {
-                    // Force de répulsion (plus l'ennemi est proche, plus c'est fort)
-                    let force = (avoidanceRadius - tDist) / avoidanceRadius;
+                if (tDist < avoidanceRadius && tDist > 0.01) {
+                    let force = Math.pow((avoidanceRadius - tDist) / avoidanceRadius, 2);
 
-                    // Répulsion pour s'éloigner
-                    repX += (tDx / tDist) * force * 1.5;
-                    repZ += (tDz / tDist) * force * 1.5;
+                    repX += (tDx / tDist) * force * 4.0;
+                    repZ += (tDz / tDist) * force * 4.0;
 
-                    // Glissement (Tangente) pour contourner la tour sans rester bloqué de face
-                    repX += (-tDz / tDist) * force * 2.0;
-                    repZ += (tDx / tDist) * force * 2.0;
+                    let cross = (dirX * tDz) - (dirZ * tDx);
+                    let sign = cross > 0 ? 1 : -1;
+
+                    repX += (-tDz / tDist) * force * 3.0 * sign;
+                    repZ += (tDx / tDist) * force * 3.0 * sign;
                 }
             });
         }
-        // ---------------------------------------------------------------
 
-        // Direction finale = Attraction Base + Répulsion Tours
         let finalDirX = dirX + repX;
         let finalDirZ = dirZ + repZ;
         let finalDist = Math.sqrt(finalDirX*finalDirX + finalDirZ*finalDirZ);
@@ -196,15 +226,14 @@ AFRAME.registerComponent('enemy-walker', {
             finalDirZ /= finalDist;
         }
 
-        // Rotation pour regarder dans la direction finale
-        this.el.object3D.rotation.y = Math.atan2(finalDirX, finalDirZ);
+        let targetAngle = Math.atan2(finalDirX, finalDirZ);
+        let currentAngle = this.el.object3D.rotation.y;
+        this.el.object3D.rotation.y += (targetAngle - currentAngle) * 0.2;
 
-        // Déplacement
         let move = (stats.data.speed * timeDelta) / 1000;
         this.el.object3D.position.x += finalDirX * move;
         this.el.object3D.position.z += finalDirZ * move;
 
-        // Ajustement à la hauteur du sol (inchangé)
         let sensorEl = this.el.querySelector('.altitude-sensor'), floorY = 0;
         if (sensorEl && sensorEl.components.raycaster) {
             let ray = sensorEl.components.raycaster, intersections = ray.intersectedEls;

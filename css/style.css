@@ -30,41 +30,80 @@ body {
 
 .scroll-container {
     background-color: rgba(62, 39, 35, 0.8);
-    padding: 40px;
+    padding: 20px 30px; /* Padding réduit */
     border: 4px solid var(--gold);
     border-radius: 10px;
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 50px rgba(0,0,0,0.5);
     text-align: center;
     max-width: 700px;
+    max-height: 90vh; /* Bloque la hauteur à 90% de l'écran */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box; /* Évite que le padding ne fasse déborder l'encadré */
     border-image: linear-gradient(to right, var(--gold), #8a6e2f, var(--gold)) 1;
 }
 
 h1 {
     font-family: 'Cinzel Decorative', cursive;
-    font-size: 3.5rem;
-    margin-bottom: 0.2rem;
+    font-size: 2.5rem; /* Taille ajustée */
+    margin-top: 0;
+    margin-bottom: 5px; /* Très réduit */
     text-transform: uppercase;
     letter-spacing: 3px;
     color: var(--gold);
     text-shadow: 2px 2px 4px #000, 0 0 15px rgba(212, 175, 55, 0.4);
 }
 
-.separator {
-    color: var(--gold);
-    font-size: 1.5rem;
-    margin-bottom: 1rem;
-}
-
 p.subtitle {
-    font-size: 1.4rem;
-    margin-bottom: 2.5rem;
+    font-size: 1.1rem;
+    margin-top: 0;
+    margin-bottom: 5px; /* Très réduit */
     font-style: italic;
     color: #c7b299;
 }
 
+.separator {
+    color: var(--gold);
+    font-size: 1.2rem;
+    margin-top: 0;
+    margin-bottom: 10px; /* Très réduit */
+}
+
+.instructions-box {
+    margin-top: 0; /* Rapproche l'encadré du diamant */
+    background-color: var(--parchment);
+    color: var(--dark-wood);
+    padding: 15px 25px; /* Plus compact */
+    border-radius: 5px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+    border: 2px solid #c2b280;
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.instructions-box h3 {
+    font-family: 'Cinzel Decorative', cursive;
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--blood-red);
+    text-align: center;
+    border-bottom: 1px solid var(--dark-wood);
+    padding-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.instructions-box p {
+    font-size: 1.1rem;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
 #xr-button {
     font-family: 'Cinzel Decorative', cursive;
-    padding: 18px 45px;
+    padding: 12px 30px;
     font-size: 1.3rem;
     font-weight: bold;
     color: var(--parchment);
@@ -75,7 +114,7 @@ p.subtitle {
     transition: all 0.3s ease;
     box-shadow: 0 6px 10px rgba(0,0,0,0.5);
     text-transform: uppercase;
-    display: none;
+    margin-top: 15px; /* Rapproche le bouton de l'encadré */
 }
 
 #xr-button:hover {
@@ -85,37 +124,12 @@ p.subtitle {
     color: #fff;
 }
 
-.instructions-box {
-    margin-top: 3rem;
-    background-color: var(--parchment);
-    color: var(--dark-wood);
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
-    border: 2px solid #c2b280;
-    text-align: left;
-}
-
-.instructions-box h3 {
-    font-family: 'Cinzel Decorative', cursive;
-    margin-top: 0;
-    color: var(--blood-red);
-    text-align: center;
-    border-bottom: 1px solid var(--dark-wood);
-    padding-bottom: 10px;
-}
-
-.instructions-box p {
-    font-size: 1rem;
-    line-height: 1.5;
-}
-
 #game-ui {
     position: absolute;
     top: 20px;
     left: 20px;
     z-index: 1000;
-    display: none; /* Caché au début, affiché par JS */
+    display: none;
     gap: 15px;
 }
 
@@ -144,25 +158,21 @@ p.subtitle {
     opacity: 0.8;
 }
 
-/* Couleurs spécifiques */
 .hp { border-color: #ff4444; color: #ffcccc; }
 .gold { border-color: #ffd700; color: #fff8cc; }
 
-
-/* --- ECRAN GAME OVER --- */
 #game-over {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(50, 0, 0, 0.9); /* Fond rouge sang sombre */
-    z-index: 99999; /* Par dessus tout */
-    display: flex;
+    background: rgba(50, 0, 0, 0.9);
+    z-index: 99999;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    display: none; /* Caché par défaut */
+    display: none;
 }
 
 #game-over h1 {

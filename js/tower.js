@@ -2,11 +2,27 @@ AFRAME.registerComponent('tower-logic', {
     schema: { type: { type: 'string', default: 'basic_turret' } },
     init: function () {
         let data = TOWER_DATA[this.data.type];
+        this.hp = data.hp || 0;
+
+        if (this.data.type === 'shield_turret') {
+            this.el.classList.add('shield-tower');
+            return;
+        }
+
         this.fireRate = data.fireRate;
         this.range = data.range;
         this.timer = 0;
     },
+    takeDamage: function(amount) {
+        if (this.data.type !== 'shield_turret') return;
+        this.hp -= amount;
+        if (this.hp <= 0) {
+            if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+        }
+    },
     tick: function (time, timeDelta) {
+        if (this.data.type === 'shield_turret') return;
+
         this.timer += timeDelta;
         if (this.timer >= this.fireRate) {
             let target = this.findClosestEnemy();
@@ -34,28 +50,37 @@ AFRAME.registerComponent('tower-logic', {
         let data = TOWER_DATA[this.data.type];
         let firePos = { x: pos.x, y: pos.y + data.offsetY + 0.05, z: pos.z };
 
-        // --- AMÉLIORATION : Visuel du projectile type "Laser" ---
-        bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.015; height: 0.2');
-        bullet.setAttribute('material', 'color: #ffaa00; emissive: #ff5500; emissiveIntensity: 2');
         bullet.setAttribute('position', firePos);
         bullet.target = target;
+        bullet.damage = data.damage;
+
+        if (this.data.type === 'lighting_turret') {
+            bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.01; height: 0.2');
+            bullet.setAttribute('material', 'color: #00ffff; emissive: #0088ff; emissiveIntensity: 3');
+            bullet.effect = 'stun';
+        } else {
+            bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.015; height: 0.2');
+            bullet.setAttribute('material', 'color: #ffaa00; emissive: #ff5500; emissiveIntensity: 2');
+        }
+
         bullet.setAttribute('projectile', '');
         this.el.sceneEl.appendChild(bullet);
-        // --------------------------------------------------------
 
-        // --- NOUVEAUTÉ : Muzzle Flash (Éclair de départ) ---
         let flash = document.createElement('a-entity');
         flash.setAttribute('geometry', 'primitive: sphere; radius: 0.08');
-        flash.setAttribute('material', 'color: #ffffff; emissive: #ffff00; emissiveIntensity: 4; transparent: true; opacity: 0.9');
+
+        if (this.data.type === 'lighting_turret') {
+            flash.setAttribute('material', 'color: #ffffff; emissive: #00ffff; emissiveIntensity: 4; transparent: true; opacity: 0.9');
+        } else {
+            flash.setAttribute('material', 'color: #ffffff; emissive: #ffff00; emissiveIntensity: 4; transparent: true; opacity: 0.9');
+        }
+
         flash.setAttribute('position', firePos);
-        // Animation pour faire disparaître le flash instantanément
         flash.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 150; easing: easeOutQuad');
         flash.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 150; easing: easeOutQuad');
         this.el.sceneEl.appendChild(flash);
 
-        // Nettoyage du flash après l'animation
         setTimeout(() => { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 150);
-        // ---------------------------------------------------
     }
 });
 
@@ -70,7 +95,6 @@ AFRAME.registerComponent('projectile', {
         let currentPos = this.el.object3D.position;
         let targetPos = this.el.target.object3D.position;
 
-        // On vise un peu au-dessus des pieds de l'ennemi (le torse)
         let targetY = targetPos.y + 0.3;
 
         let dx = targetPos.x - currentPos.x;
@@ -78,18 +102,19 @@ AFRAME.registerComponent('projectile', {
         let dz = targetPos.z - currentPos.z;
         let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-        // --- NOUVEAUTÉ : Orientation du laser vers la cible ---
         this.el.object3D.lookAt(targetPos.x, targetY, targetPos.z);
-        this.el.object3D.rotateX(Math.PI / 2); // Ajustement car c'est un cylindre
-        // ------------------------------------------------------
+        this.el.object3D.rotateX(Math.PI / 2);
 
         if (dist < 0.2) {
             let stats = this.el.target.components['enemy-stats'];
-            if (stats) stats.takeHit();
+            if (stats) {
+                stats.takeHit(this.el.damage);
+                if (this.el.effect === 'stun') {
+                    stats.applyStun(TOWER_DATA['lighting_turret'].stunDuration);
+                }
+            }
 
-            // --- NOUVEAUTÉ : Effet d'impact (Explosion de particules) ---
-            this.createImpactEffect(currentPos);
-            // ------------------------------------------------------------
+            this.createImpactEffect(currentPos, this.el.effect);
 
             this.el.parentNode.removeChild(this.el);
             return;
@@ -100,20 +125,23 @@ AFRAME.registerComponent('projectile', {
         this.el.object3D.position.z += (dz / dist) * move;
     },
 
-    // Fonction qui génère l'effet visuel lors du contact
-    createImpactEffect: function(pos) {
+    createImpactEffect: function(pos, effect) {
         let impact = document.createElement('a-entity');
         impact.setAttribute('geometry', 'primitive: sphere; radius: 0.1');
-        impact.setAttribute('material', 'color: #ff4400; emissive: #ff0000; emissiveIntensity: 3; wireframe: true; transparent: true');
+
+        if (effect === 'stun') {
+            impact.setAttribute('material', 'color: #00ccff; emissive: #00ffff; emissiveIntensity: 3; wireframe: true; transparent: true');
+        } else {
+            impact.setAttribute('material', 'color: #ff4400; emissive: #ff0000; emissiveIntensity: 3; wireframe: true; transparent: true');
+        }
+
         impact.setAttribute('position', pos);
 
-        // Animation d'expansion et d'effacement
         impact.setAttribute('animation__scale', 'property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad');
         impact.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 200; easing: easeOutQuad');
 
         this.el.sceneEl.appendChild(impact);
 
-        // Nettoyage de l'entité
         setTimeout(() => { if (impact.parentNode) impact.parentNode.removeChild(impact); }, 200);
     }
 });

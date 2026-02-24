@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>XR DEFENSE - DEBUG MODE</title>
+    <title>XR DEFENSE</title>
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
@@ -20,11 +20,26 @@
 <div id="overlay">
     <div class="scroll-container">
         <h1>XR DEFENSE</h1>
+        <p class="subtitle">Defend the Crystal against the dark hordes!</p>
         <div class="separator">♦</div>
-        <p>DEBUG MODE ACTIVE</p>
-        <p>1. Scan floor/tables (Look for Green Wireframes).</p>
-        <p>2. Build towers with RIGHT trigger.</p>
-        <button id="xr-button" style="display: inline-block; z-index:99999;">START GAME</button>
+
+        <div class="instructions-box" style="padding: 30px;">
+            <h3 style="font-size: 1.8rem; margin-bottom: 25px;">COMMANDS & RULES</h3>
+            <p style="font-size: 1.2rem; margin-bottom: 15px;">
+                <strong style="color: var(--blood-red);">♦ ARSENAL:</strong> Press <strong>X / Y</strong> (Left Controller) to switch tower types.
+            </p>
+            <p style="font-size: 1.2rem; margin-bottom: 25px;">
+                <strong style="color: var(--blood-red);">♦ TO ARMS:</strong> Point and click the <strong>CRYSTAL</strong> to start the wave!
+            </p>
+            <p style="font-size: 1.2rem; margin-bottom: 15px;">
+                <strong style="color: var(--blood-red);">♦ BUILD:</strong> Use the <strong>RIGHT TRIGGER</strong> to deploy your defenses.
+            </p>
+            <p style="text-align: center; font-size: 1.3rem; font-family: 'Cinzel Decorative', cursive; color: var(--dark-wood); border-top: 1px solid var(--dark-wood); padding-top: 15px; margin: 0;">
+                Survive. Do not let your HP reach 0.
+            </p>
+        </div>
+
+        <button id="xr-button" style="display: inline-block; z-index:99999; margin-top: 35px; font-size: 1.5rem;">ENTER BATTLE</button>
     </div>
 </div>
 
@@ -52,11 +67,13 @@
         background="color: transparent">
 
     <a-assets>
-        <a-asset-item id="model-orc" src="assets/Orc.glb"></a-asset-item>
-        <a-asset-item id="model-skeleton" src="assets/Skeleton.glb"></a-asset-item>
-        <a-asset-item id="model-demon" src="assets/Blue Demon.glb"></a-asset-item>
-        <a-asset-item id="model-dragon" src="assets/Dragon Evolved.glb"></a-asset-item>
-        <a-asset-item id="model-turret" src="assets/Hive Turret.glb"></a-asset-item>
+        <a-asset-item id="model-orc" src="assets/Model/Orc.glb"></a-asset-item>
+        <a-asset-item id="model-skeleton" src="assets/Model/Skeleton.glb"></a-asset-item>
+        <a-asset-item id="model-demon" src="assets/Model/Demon.glb"></a-asset-item>
+        <a-asset-item id="model-dragon" src="assets/Model/Dragon.glb"></a-asset-item>
+        <a-asset-item id="model-turret" src="assets/Model/Turret.glb"></a-asset-item>
+        <a-asset-item id="model-lighting" src="assets/Model/LightingTurret.glb"></a-asset-item>
+        <a-asset-item id="model-shield" src="assets/Model/ShieldTurret.glb"></a-asset-item>
     </a-assets>
 
     <a-light type="directional" intensity="1" position="-1 2 2"></a-light>
@@ -66,18 +83,17 @@
         <a-entity id="hud-group" position="0 -0.25 -0.5" rotation="-15 0 0">
             <a-plane color="black" opacity="0.5" width="0.8" height="0.15" position="0 0.15 -0.01"></a-plane>
             <a-text id="hud-hp" value="HP: 20" color="#FF4444" position="-0.3 0.15 0" width="1.5"></a-text>
-            <a-text id="hud-gold" value="GOLD: 100" color="#FFD700" position="0.1 0.15 0" width="1.5"></a-text>
+            <a-text id="hud-gold" value="GOLD: 150" color="#FFD700" position="0.1 0.15 0" width="1.5"></a-text>
         </a-entity>
     </a-camera>
 
     <a-entity oculus-touch-controls="hand: right"></a-entity>
-    <a-entity oculus-touch-controls="hand: left"></a-entity>
+    <a-entity id="left-controller" oculus-touch-controls="hand: left" tower-menu></a-entity>
 
     <a-entity id="reticle" visible="false">
         <a-ring color="#00FF00" radius-inner="0.04" radius-outer="0.05" rotation="-90 0 0"></a-ring>
         <a-cylinder color="#00FF00" height="0.1" radius="0.005" position="0 0.05 0"></a-cylinder>
     </a-entity>
-
 </a-scene>
 </body>
 </html>
