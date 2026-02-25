@@ -19,6 +19,9 @@ AFRAME.registerComponent('tower-logic', {
         this.damage = data.damage;
         this.stunDuration = data.stunDuration || 0;
         this.timer = 0;
+
+        let soundId = this.data.type === 'lighting_turret' ? '#snd-zap' : '#snd-magic';
+        this.el.setAttribute('sound', `src: ${soundId}; volume: 0.15; positional: true; refDistance: 1; poolSize: 4`);
     },
     remove: function () {
         this.el.sceneEl.systems['game-manager'].unregisterTower(this.el, this.isShield);
@@ -54,20 +57,6 @@ AFRAME.registerComponent('tower-logic', {
             z: currentScale.z * 1.15
         };
         this.el.setAttribute('animation__upgrade', `property: scale; to: ${newScale.x} ${newScale.y} ${newScale.z}; dur: 300; easing: easeOutElastic`);
-
-        let flash = document.createElement('a-entity');
-        flash.setAttribute('geometry', 'primitive: cylinder; radius: 0.3; height: 1.5');
-        flash.setAttribute('material', 'color: #00ffff; emissive: #00ffff; emissiveIntensity: 2; transparent: true; opacity: 0.6; side: double');
-        flash.setAttribute('position', '0 0.75 0');
-        flash.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 500; easing: easeOutQuad');
-        flash.setAttribute('animation__scale', 'property: scale; to: 1.5 1 1.5; dur: 500; easing: easeOutQuad');
-        this.el.appendChild(flash);
-        setTimeout(() => { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 500);
-
-        let upgradeSound = document.createElement('a-entity');
-        upgradeSound.setAttribute('sound', `src: #snd-magic; autoplay: true; volume: 0.3; positional: true; refDistance: 1`);
-        this.el.appendChild(upgradeSound);
-        setTimeout(() => { if (upgradeSound.parentNode) upgradeSound.parentNode.removeChild(upgradeSound); }, 2000);
     },
     takeDamage: function(amount) {
         if (!this.isShield) return;
@@ -100,8 +89,8 @@ AFRAME.registerComponent('tower-logic', {
             let enemy = enemies[i];
             if (!enemy.object3D) continue;
 
-            let stats = enemy.getAttribute('enemy-stats');
-            if (stats && stats.isFlying && !isHighTower) continue;
+            let stats = enemy.components['enemy-stats'];
+            if (stats && stats.data.isFlying && !isHighTower) continue;
 
             let distSq = myPos.distanceToSquared(enemy.object3D.position);
             if (distSq < minDistSq) {
@@ -124,33 +113,18 @@ AFRAME.registerComponent('tower-logic', {
 
         if (this.data.type === 'lighting_turret') {
             bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.01; height: 0.2');
-            bullet.setAttribute('material', 'color: #00ffff; emissive: #0088ff; emissiveIntensity: 3');
+            bullet.setAttribute('material', 'color: #00ffff; emissive: #0088ff; emissiveIntensity: 2');
             bullet.effect = 'stun';
         } else {
             bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.015; height: 0.2');
-            bullet.setAttribute('material', 'color: #ffaa00; emissive: #ff5500; emissiveIntensity: 2');
+            bullet.setAttribute('material', 'color: #ffaa00; emissive: #ff5500; emissiveIntensity: 1');
             bullet.effect = 'normal';
         }
 
         bullet.setAttribute('projectile', '');
         this.el.sceneEl.appendChild(bullet);
 
-        let shootSound = document.createElement('a-entity');
-        let soundId = this.data.type === 'lighting_turret' ? '#snd-zap' : '#snd-magic';
-        shootSound.setAttribute('sound', `src: ${soundId}; autoplay: true; volume: 0.15; positional: true; refDistance: 1`);
-        shootSound.setAttribute('position', firePos);
-        this.el.sceneEl.appendChild(shootSound);
-        setTimeout(() => { if (shootSound.parentNode) shootSound.parentNode.removeChild(shootSound); }, 2000);
-
-        let flash = document.createElement('a-entity');
-        flash.setAttribute('geometry', 'primitive: sphere; radius: 0.08');
-        flash.setAttribute('material', `color: #ffffff; emissive: ${this.data.type === 'lighting_turret' ? '#00ffff' : '#ffff00'}; emissiveIntensity: 4; transparent: true; opacity: 0.9`);
-        flash.setAttribute('position', firePos);
-        flash.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 150; easing: easeOutQuad');
-        flash.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 150; easing: easeOutQuad');
-        this.el.sceneEl.appendChild(flash);
-
-        setTimeout(() => { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 150);
+        if(this.el.components.sound) this.el.components.sound.playSound();
     }
 });
 
@@ -169,12 +143,9 @@ AFRAME.registerComponent('projectile', {
         let dx = targetPos.x - currentPos.x;
         let dy = targetY - currentPos.y;
         let dz = targetPos.z - currentPos.z;
-        let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        let distSq = dx*dx + dy*dy + dz*dz;
 
-        this.el.object3D.lookAt(targetPos.x, targetY, targetPos.z);
-        this.el.object3D.rotateX(Math.PI / 2);
-
-        if (dist < 0.2) {
+        if (distSq < 0.04) {
             let stats = this.el.target.components['enemy-stats'];
             if (stats) {
                 stats.takeHit(this.el.damage);
@@ -182,35 +153,17 @@ AFRAME.registerComponent('projectile', {
                     stats.applyStun(this.el.stunDuration || 1000);
                 }
             }
-            this.createImpactEffect(currentPos, this.el.effect);
             this.el.parentNode.removeChild(this.el);
             return;
         }
+
+        let dist = Math.sqrt(distSq);
+        this.el.object3D.lookAt(targetPos.x, targetY, targetPos.z);
+        this.el.object3D.rotateX(Math.PI / 2);
+
         let move = (this.speed * timeDelta) / 1000;
         this.el.object3D.position.x += (dx / dist) * move;
         this.el.object3D.position.y += (dy / dist) * move;
         this.el.object3D.position.z += (dz / dist) * move;
-    },
-    createImpactEffect: function(pos, effect) {
-        let impact = document.createElement('a-entity');
-        impact.setAttribute('geometry', 'primitive: sphere; radius: 0.1');
-
-        if (effect === 'stun') {
-            impact.setAttribute('material', 'color: #00ccff; emissive: #00ffff; emissiveIntensity: 3; wireframe: true; transparent: true');
-        } else {
-            impact.setAttribute('material', 'color: #ff4400; emissive: #ff0000; emissiveIntensity: 3; wireframe: true; transparent: true');
-        }
-
-        impact.setAttribute('position', pos);
-        impact.setAttribute('animation__scale', 'property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad');
-        impact.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 200; easing: easeOutQuad');
-        this.el.sceneEl.appendChild(impact);
-        setTimeout(() => { if (impact.parentNode) impact.parentNode.removeChild(impact); }, 200);
-
-        let impactSound = document.createElement('a-entity');
-        impactSound.setAttribute('sound', `src: #snd-boom; autoplay: true; volume: 0.2; positional: true; refDistance: 1`);
-        impactSound.setAttribute('position', pos);
-        this.el.sceneEl.appendChild(impactSound);
-        setTimeout(() => { if (impactSound.parentNode) impactSound.parentNode.removeChild(impactSound); }, 2000);
     }
 });

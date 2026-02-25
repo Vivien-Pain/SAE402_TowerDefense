@@ -43,9 +43,9 @@ AFRAME.registerComponent('environment-manager', {
     init: function () {
         this.meshes = new Map();
         this.occlusionMaterial = new THREE.MeshBasicMaterial({ colorWrite: false });
-
         this.obstacleGroup = new THREE.Group();
         this.el.object3D.add(this.obstacleGroup);
+        this.updateThrottle = 0;
 
         this.el.addEventListener('child-attached', (evt) => {
             let childEl = evt.detail.el;
@@ -58,7 +58,11 @@ AFRAME.registerComponent('environment-manager', {
             }, 500);
         });
     },
-    tick: function () {
+    tick: function (time, timeDelta) {
+        this.updateThrottle += timeDelta;
+        if (this.updateThrottle < 500) return;
+        this.updateThrottle = 0;
+
         const frame = this.el.sceneEl.frame;
         const renderer = this.el.sceneEl.renderer;
 
@@ -158,8 +162,9 @@ AFRAME.registerComponent('enemy-spawner', {
         this.createEnemy(type);
     },
     createEnemy: function (type) {
-        let data = MOB_DATA[type];
+        let data = typeof MOB_DATA !== 'undefined' ? MOB_DATA[type] : null;
         if(!data) return;
+
         let enemy = document.createElement('a-entity');
         enemy.classList.add('enemy');
         let angle = Math.random() * Math.PI * 2, dist = 4;
@@ -185,9 +190,10 @@ AFRAME.registerComponent('enemy-spawner', {
 
         let sensor = document.createElement('a-entity');
         sensor.setAttribute('position', '0 2.0 -0.5');
-        sensor.setAttribute('raycaster', { objects: '.climbable', direction: {x: 0, y: -1, z: 0}, far: 4, interval: 0 });
+        sensor.setAttribute('raycaster', { objects: '.climbable', direction: {x: 0, y: -1, z: 0}, far: 4, interval: 250 });
         sensor.classList.add('altitude-sensor');
         enemy.appendChild(sensor);
+
         enemy.setAttribute('enemy-walker', '');
         this.el.sceneEl.appendChild(enemy);
     }
@@ -202,10 +208,11 @@ AFRAME.registerComponent('enemy-stats', {
     remove: function() {
         this.el.sceneEl.systems['game-manager'].unregisterEnemy(this.el);
     },
-    takeHit: function(damage = 1) {
+    takeHit: function(damage) {
         if (this.isDead) return;
-        this.data.hp -= damage;
+        this.data.hp -= damage || 1;
         let el = this.el;
+
         if (this.data.hp <= 0) {
             this.isDead = true;
             el.setAttribute('animation-mixer', `clip: ${this.data.deathAnim}; loop: once; crossFadeDuration: 0.2; timeScale: 1`);
@@ -240,7 +247,6 @@ AFRAME.registerComponent('enemy-walker', {
         this.raycasterLeft = new THREE.Raycaster();
         this.raycasterRight = new THREE.Raycaster();
 
-        // OPTIMISATION : Pré-allocation des variables pour ne pas saturer la mémoire (évite les lags)
         this.rayOrigin = new THREE.Vector3();
         this.dirCenter = new THREE.Vector3();
         this.dirLeft = new THREE.Vector3();
@@ -254,7 +260,6 @@ AFRAME.registerComponent('enemy-walker', {
 
         this.avoidanceDirection = (Math.random() > 0.5) ? 1 : -1;
 
-        // Variables pour le throttling du raycast environnement
         this.envScanTimer = 0;
         this.envRepX = 0;
         this.envRepZ = 0;
@@ -272,7 +277,7 @@ AFRAME.registerComponent('enemy-walker', {
         let targetTower = null;
 
         let shieldTowers = gameSystem ? gameSystem.shieldTowers : [];
-        let minDistSq = 9.0; // 3 mètres au carré
+        let minDistSq = 9.0;
 
         for (let i = 0; i < shieldTowers.length; i++) {
             let shield = shieldTowers[i];
@@ -289,9 +294,9 @@ AFRAME.registerComponent('enemy-walker', {
 
         let dx = targetPos.x - pos.x;
         let dz = targetPos.z - pos.z;
-        let distToTarget = Math.sqrt(dx*dx + dz*dz);
+        let distSqTarget = dx*dx + dz*dz;
 
-        if (distToTarget < 0.3) {
+        if (distSqTarget < 0.09) {
             stats.isAttacking = true;
             this.el.setAttribute('animation-mixer', `clip: ${stats.data.attackAnim}; loop: once; crossFadeDuration: 0.2`);
             setTimeout(() => {
@@ -305,6 +310,8 @@ AFRAME.registerComponent('enemy-walker', {
             }, 1000);
             return;
         }
+
+        let distToTarget = Math.sqrt(distSqTarget);
 
         this.checkStuckTimer += timeDelta;
         if (this.checkStuckTimer > 1000) {
@@ -339,8 +346,7 @@ AFRAME.registerComponent('enemy-walker', {
 
         if (!stats.data.isFlying) {
             let towers = gameSystem ? gameSystem.towers : [];
-            let avoidanceRadius = 0.7 + mobScale;
-            let avoidanceRadiusSq = avoidanceRadius * avoidanceRadius;
+            let avoidanceRadiusSq = (0.7 + mobScale) * (0.7 + mobScale);
 
             for (let i = 0; i < towers.length; i++) {
                 let tower = towers[i];
@@ -353,7 +359,7 @@ AFRAME.registerComponent('enemy-walker', {
 
                 if (tDistSq < avoidanceRadiusSq && tDistSq > 0.0001) {
                     let tDist = Math.sqrt(tDistSq);
-                    let force = Math.pow((avoidanceRadius - tDist) / avoidanceRadius, 2);
+                    let force = Math.pow(((0.7 + mobScale) - tDist) / (0.7 + mobScale), 2);
                     repX += (tDx / tDist) * force * 4.0;
                     repZ += (tDz / tDist) * force * 4.0;
 
@@ -366,17 +372,16 @@ AFRAME.registerComponent('enemy-walker', {
                 }
             }
 
-            // OPTIMISATION RAYCASTING : Fait le calcul des meubles seulement toutes les 100ms (10 fois par sec)
             this.envScanTimer -= timeDelta;
             if (this.envScanTimer <= 0) {
-                this.envScanTimer = 100; // Reset
+                this.envScanTimer = 500;
                 this.envRepX = 0;
                 this.envRepZ = 0;
                 this.envSpeedMult = 1.0;
 
                 if (!this.ghostMode) {
                     let envManager = this.el.sceneEl.components['environment-manager'];
-                    if (envManager && envManager.obstacleGroup) {
+                    if (envManager && envManager.obstacleGroup && envManager.obstacleGroup.children.length > 0) {
                         this.rayOrigin.copy(pos);
                         this.rayOrigin.y += 0.2;
 
@@ -406,11 +411,8 @@ AFRAME.registerComponent('enemy-walker', {
                         let distRight = hitRight.length > 0 ? hitRight[0].distance : scanDist;
 
                         if (distCenter < scanDist || distLeft < scanDist || distRight < scanDist) {
-                            if (distLeft > distRight + 0.1) {
-                                this.avoidanceDirection = -1;
-                            } else if (distRight > distLeft + 0.1) {
-                                this.avoidanceDirection = 1;
-                            }
+                            if (distLeft > distRight + 0.1) this.avoidanceDirection = -1;
+                            else if (distRight > distLeft + 0.1) this.avoidanceDirection = 1;
 
                             let minObstacleDist = Math.min(distCenter, distLeft, distRight);
                             let force = Math.pow((scanDist - minObstacleDist) / scanDist, 2) * 12.0;
@@ -433,7 +435,6 @@ AFRAME.registerComponent('enemy-walker', {
                 }
             }
 
-            // Applique la force environnementale en cache
             if (!this.ghostMode) {
                 repX += this.envRepX;
                 repZ += this.envRepZ;
@@ -445,9 +446,10 @@ AFRAME.registerComponent('enemy-walker', {
 
         let finalDirX = dirX + repX;
         let finalDirZ = dirZ + repZ;
-        let finalDist = Math.sqrt(finalDirX*finalDirX + finalDirZ*finalDirZ);
+        let finalDistSq = finalDirX*finalDirX + finalDirZ*finalDirZ;
 
-        if (finalDist > 0) {
+        if (finalDistSq > 0) {
+            let finalDist = Math.sqrt(finalDistSq);
             finalDirX /= finalDist;
             finalDirZ /= finalDist;
         }
