@@ -1,11 +1,12 @@
 AFRAME.registerComponent('tower-logic', {
     schema: { type: { type: 'string', default: 'basic_turret' } },
     init: function () {
+        this.level = 0;
         let data = TOWER_DATA[this.data.type];
         this.hp = data.hp || 0;
+        this.maxHp = this.hp;
         this.isShield = this.data.type === 'shield_turret';
 
-        // Enregistre la tour dans la mémoire globale
         this.el.sceneEl.systems['game-manager'].registerTower(this.el, this.isShield);
 
         if (this.isShield) {
@@ -15,11 +16,58 @@ AFRAME.registerComponent('tower-logic', {
 
         this.fireRate = data.fireRate;
         this.range = data.range;
+        this.damage = data.damage;
+        this.stunDuration = data.stunDuration || 0;
         this.timer = 0;
     },
     remove: function () {
-        // Nettoie la mémoire si la tour est détruite
         this.el.sceneEl.systems['game-manager'].unregisterTower(this.el, this.isShield);
+    },
+    canUpgrade: function() {
+        let data = TOWER_DATA[this.data.type];
+        return data.upgrades && this.level < data.upgrades.length;
+    },
+    getUpgradeCost: function() {
+        if (!this.canUpgrade()) return 0;
+        return TOWER_DATA[this.data.type].upgrades[this.level].cost;
+    },
+    upgrade: function() {
+        if (!this.canUpgrade()) return;
+
+        let data = TOWER_DATA[this.data.type];
+        let upgradeData = data.upgrades[this.level];
+        this.level++;
+
+        if (this.isShield) {
+            this.maxHp += upgradeData.hpBonus;
+            this.hp += upgradeData.hpBonus;
+        } else {
+            if (upgradeData.damage) this.damage = upgradeData.damage;
+            if (upgradeData.fireRate) this.fireRate = upgradeData.fireRate;
+            if (upgradeData.stunDuration) this.stunDuration = upgradeData.stunDuration;
+        }
+
+        let currentScale = this.el.getAttribute('scale') || {x:1, y:1, z:1};
+        let newScale = {
+            x: currentScale.x * 1.15,
+            y: currentScale.y * 1.15,
+            z: currentScale.z * 1.15
+        };
+        this.el.setAttribute('animation__upgrade', `property: scale; to: ${newScale.x} ${newScale.y} ${newScale.z}; dur: 300; easing: easeOutElastic`);
+
+        let flash = document.createElement('a-entity');
+        flash.setAttribute('geometry', 'primitive: cylinder; radius: 0.3; height: 1.5');
+        flash.setAttribute('material', 'color: #00ffff; emissive: #00ffff; emissiveIntensity: 2; transparent: true; opacity: 0.6; side: double');
+        flash.setAttribute('position', '0 0.75 0');
+        flash.setAttribute('animation__fade', 'property: material.opacity; to: 0; dur: 500; easing: easeOutQuad');
+        flash.setAttribute('animation__scale', 'property: scale; to: 1.5 1 1.5; dur: 500; easing: easeOutQuad');
+        this.el.appendChild(flash);
+        setTimeout(() => { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 500);
+
+        let upgradeSound = document.createElement('a-entity');
+        upgradeSound.setAttribute('sound', `src: #snd-magic; autoplay: true; volume: 0.3; positional: true; refDistance: 1`);
+        this.el.appendChild(upgradeSound);
+        setTimeout(() => { if (upgradeSound.parentNode) upgradeSound.parentNode.removeChild(upgradeSound); }, 2000);
     },
     takeDamage: function(amount) {
         if (!this.isShield) return;
@@ -41,13 +89,10 @@ AFRAME.registerComponent('tower-logic', {
         }
     },
     findClosestEnemy: function () {
-        // OPTIMISATION : Utilise la liste en mémoire, sans querySelectorAll
         let gameSystem = this.el.sceneEl.systems['game-manager'];
         let enemies = gameSystem ? gameSystem.enemies : [];
         let myPos = this.el.object3D.position;
         let closest = null;
-
-        // Optimisation Math.sqrt : on compare les carrés des distances
         let minDistSq = this.range * this.range;
         let isHighTower = myPos.y > 0.4;
 
@@ -74,7 +119,8 @@ AFRAME.registerComponent('tower-logic', {
 
         bullet.setAttribute('position', firePos);
         bullet.target = target;
-        bullet.damage = data.damage;
+        bullet.damage = this.damage;
+        bullet.stunDuration = this.stunDuration;
 
         if (this.data.type === 'lighting_turret') {
             bullet.setAttribute('geometry', 'primitive: cylinder; radius: 0.01; height: 0.2');
@@ -133,7 +179,7 @@ AFRAME.registerComponent('projectile', {
             if (stats) {
                 stats.takeHit(this.el.damage);
                 if (this.el.effect === 'stun') {
-                    stats.applyStun(TOWER_DATA['lighting_turret'].stunDuration);
+                    stats.applyStun(this.el.stunDuration || 1000);
                 }
             }
             this.createImpactEffect(currentPos, this.el.effect);

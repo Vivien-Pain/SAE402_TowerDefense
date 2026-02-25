@@ -23,29 +23,37 @@
         <p class="subtitle">Defend the Crystal against the dark hordes!</p>
         <div class="separator">♦</div>
 
-        <div class="instructions-box" style="padding: 30px;">
-            <h3 style="font-size: 1.8rem; margin-bottom: 25px;">COMMANDS & RULES</h3>
-            <p style="font-size: 1.2rem; margin-bottom: 15px;">
-                <strong style="color: var(--blood-red);">♦ ARSENAL:</strong> Press <strong>X / Y</strong> (Left Controller) to switch tower types.
+        <div class="instructions-box">
+            <h3>COMMANDS & RULES</h3>
+
+            <p>
+                <strong class="highlight-red">♦ ARSENAL:</strong> Press <strong>X / Y</strong> (Left Controller) to
+                switch tower types.
             </p>
-            <p style="font-size: 1.2rem; margin-bottom: 25px;">
-                <strong style="color: var(--blood-red);">♦ TO ARMS:</strong> Point and click the <strong>CRYSTAL</strong> to start the wave!
+            <p class="rule-gap">
+                <strong class="highlight-red">♦ TO ARMS:</strong> Point and click the <strong>CRYSTAL</strong> to start
+                the wave!
             </p>
-            <p style="font-size: 1.2rem; margin-bottom: 15px;">
-                <strong style="color: var(--blood-red);">♦ BUILD:</strong> Use the <strong>RIGHT TRIGGER</strong> to deploy your defenses.
+            <p>
+                <strong class="highlight-red">♦ BUILD:</strong> Use the <strong>RIGHT TRIGGER</strong> to deploy your
+                defenses.
             </p>
-            <p style="text-align: center; font-size: 1.3rem; font-family: 'Cinzel Decorative', cursive; color: var(--dark-wood); border-top: 1px solid var(--dark-wood); padding-top: 15px; margin: 0;">
+            <p class="rule-gap">
+                <strong class="highlight-red">♦ UPGRADE:</strong> Point at your towers. If the ring is <strong>BLUE</strong>, press the <strong>RIGHT TRIGGER</strong> to upgrade them!
+            </p>
+
+            <p class="survival-rule">
                 Survive. Do not let your HP reach 0.
             </p>
         </div>
 
-        <button id="xr-button" style="display: inline-block; z-index:99999; margin-top: 35px; font-size: 1.5rem;">ENTER BATTLE</button>
+        <button id="xr-button">ENTER BATTLE</button>
     </div>
 </div>
 
-<div id="game-over" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(50,0,0,0.9); z-index:99999; flex-direction:column; align-items:center; justify-content:center;">
-    <h1 style="color:red; font-size:4rem;">DEFEAT</h1>
-    <button onclick="location.reload()" style="padding:20px; font-size:2rem;">RETRY</button>
+<div id="game-over">
+    <h1>DEFEAT</h1>
+    <button onclick="location.reload()">RETRY</button>
 </div>
 
 <script>
@@ -93,11 +101,13 @@
             <a-plane color="#d4af37" opacity="0.8" width="0.46" height="0.08" position="0 0 -0.02"></a-plane>
             <a-plane color="#2c1308" opacity="0.95" width="0.45" height="0.07" position="0 0 -0.01"></a-plane>
 
-            <a-text id="hud-hp" value="HP :  20" color="#8a0303" position="-0.12 0 0" width="0.8" align="center"></a-text>
+            <a-text id="hud-hp" value="HP :  20" color="#8a0303" position="-0.12 0 0" width="0.8"
+                    align="center"></a-text>
 
             <a-plane color="#d4af37" opacity="0.8" width="0.001" height="0.05" position="0 0 0"></a-plane>
 
-            <a-text id="hud-gold" value="GOLD :  150" color="#d4af37" position="0.12 0 0" width="0.8" align="center"></a-text>
+            <a-text id="hud-gold" value="GOLD :  150" color="#d4af37" position="0.12 0 0" width="0.8"
+                    align="center"></a-text>
         </a-entity>
     </a-camera>
 

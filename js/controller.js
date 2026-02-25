@@ -59,7 +59,6 @@ AFRAME.registerComponent('tower-menu', {
     },
     updateMenu: function() {
         let data = TOWER_DATA[this.selectedTower];
-
         this.nameEl.setAttribute('value', data.name);
         this.costEl.setAttribute('value', 'COST : ' + data.cost + ' G');
 
@@ -84,8 +83,8 @@ AFRAME.registerComponent('ar-game-controller', {
         this.hitTestSource = null;
         this.inputSource = null;
         this.isValidPlacement = false;
+        this.hoveredTower = null;
 
-        // Variables en cache pour l'optimisation
         this.upVector = new THREE.Vector3();
         this.cameraEl = null;
 
@@ -109,7 +108,6 @@ AFRAME.registerComponent('ar-game-controller', {
         const frame = this.el.sceneEl.frame;
         const refSpace = this.el.sceneEl.renderer.xr.getReferenceSpace();
 
-        // Met la caméra en cache (évite de requêter le DOM à chaque image)
         if (!this.cameraEl) {
             this.cameraEl = document.querySelector('a-camera');
         }
@@ -123,23 +121,23 @@ AFRAME.registerComponent('ar-game-controller', {
                 if (this.upVector.y < 0.8) {
                     this.reticle.setAttribute('visible', 'false');
                     this.isValidPlacement = false;
+                    this.hoveredTower = null;
                     return;
                 }
 
                 let hitPos = pose.transform.position;
-
                 this.reticle.setAttribute('visible', 'true');
                 this.reticle.object3D.position.copy(hitPos);
                 this.reticle.object3D.quaternion.identity();
 
                 let isValid = true;
+                let hoveredTower = null;
 
                 let rayPose = frame.getPose(this.inputSource.targetRaySpace, refSpace);
                 if (rayPose) {
                     let cp = rayPose.transform.position;
-                    // Optimisation maths (carrés)
                     let dRaySq = Math.pow(cp.x - hitPos.x, 2) + Math.pow(cp.y - hitPos.y, 2) + Math.pow(cp.z - hitPos.z, 2);
-                    if (dRaySq < 0.1225) { // 0.35 * 0.35
+                    if (dRaySq < 0.1225) {
                         isValid = false;
                     }
                 }
@@ -147,7 +145,7 @@ AFRAME.registerComponent('ar-game-controller', {
                 if (this.cameraEl && isValid) {
                     let camPos = this.cameraEl.object3D.position;
                     let dCamSq = Math.pow(camPos.x - hitPos.x, 2) + Math.pow(camPos.z - hitPos.z, 2);
-                    if (dCamSq < 0.16) { // 0.4 * 0.4
+                    if (dCamSq < 0.16) {
                         isValid = false;
                     }
                 }
@@ -157,26 +155,35 @@ AFRAME.registerComponent('ar-game-controller', {
                 if (gameSystem && gameSystem.gameState === 'playing' && isValid) {
                     let basePos = gameSystem.basePosition;
                     let dBaseSq = Math.pow(basePos.x - hitPos.x, 2) + Math.pow(basePos.z - hitPos.z, 2);
-                    if (dBaseSq < 0.7225) { // 0.85 * 0.85
+                    if (dBaseSq < 0.7225) {
                         isValid = false;
                     }
 
-                    if (isValid) {
-                        let towers = gameSystem.towers;
-                        for (let i = 0; i < towers.length; i++) {
-                            let tPos = towers[i].object3D.position;
-                            let dTtSq = Math.pow(tPos.x - hitPos.x, 2) + Math.pow(tPos.z - hitPos.z, 2);
-                            if (dTtSq < 0.5625) { // 0.75 * 0.75
-                                isValid = false;
-                                break;
+                    let towers = gameSystem.towers;
+                    for (let i = 0; i < towers.length; i++) {
+                        let tPos = towers[i].object3D.position;
+                        let dTtSq = Math.pow(tPos.x - hitPos.x, 2) + Math.pow(tPos.z - hitPos.z, 2);
+                        if (dTtSq < 0.5625) {
+                            isValid = false;
+                            if (dTtSq < 0.25) {
+                                hoveredTower = towers[i];
                             }
                         }
                     }
                 }
 
                 this.isValidPlacement = isValid;
+                this.hoveredTower = hoveredTower;
 
                 let color = isValid ? '#00FF00' : '#FF0000';
+
+                if (hoveredTower) {
+                    let tLogic = hoveredTower.components['tower-logic'];
+                    if (tLogic && tLogic.canUpgrade()) {
+                        color = '#0088FF';
+                    }
+                }
+
                 if (this.ring) this.ring.setAttribute('color', color);
                 if (this.cylinder) this.cylinder.setAttribute('color', color);
 
@@ -186,20 +193,31 @@ AFRAME.registerComponent('ar-game-controller', {
 
         this.reticle.setAttribute('visible', 'false');
         this.isValidPlacement = false;
+        this.hoveredTower = null;
     },
     tryBuild: function() {
-        if (this.reticle.getAttribute('visible') === true && this.isValidPlacement) {
+        if (this.reticle.getAttribute('visible') === true) {
             let gameSystem = this.el.sceneEl.systems['game-manager'];
             if (!gameSystem) return;
 
-            if (gameSystem.gameState === 'placing_base') {
+            if (gameSystem.gameState === 'placing_base' && this.isValidPlacement) {
                 this.spawnBase(this.reticle.object3D.position);
                 gameSystem.setBasePosition(this.reticle.object3D.position);
             }
             else if (gameSystem.gameState === 'playing') {
-                let towerType = gameSystem.selectedTowerType;
-                if (gameSystem.tryBuyTower(TOWER_DATA[towerType].cost)) {
-                    this.spawnTower(this.reticle.object3D.position, towerType);
+                if (this.hoveredTower) {
+                    let tLogic = this.hoveredTower.components['tower-logic'];
+                    if (tLogic && tLogic.canUpgrade()) {
+                        let cost = tLogic.getUpgradeCost();
+                        if (gameSystem.tryBuyTower(cost)) {
+                            tLogic.upgrade();
+                        }
+                    }
+                } else if (this.isValidPlacement) {
+                    let towerType = gameSystem.selectedTowerType;
+                    if (gameSystem.tryBuyTower(TOWER_DATA[towerType].cost)) {
+                        this.spawnTower(this.reticle.object3D.position, towerType);
+                    }
                 }
             }
         }
