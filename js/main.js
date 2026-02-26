@@ -8,7 +8,6 @@ AFRAME.registerSystem('game-manager', {
         this.basePosition = new THREE.Vector3(0, 0, 0);
         this.selectedTowerType = 'basic_turret';
 
-        // --- OPTIMISATION : Registres pour éviter les querySelectorAll ---
         this.towers = [];
         this.shieldTowers = [];
         this.enemies = [];
@@ -19,7 +18,6 @@ AFRAME.registerSystem('game-manager', {
         this.updateUI();
     },
 
-    // Méthodes pour maintenir le registre à jour instantanément
     registerTower: function(el, isShield) {
         this.towers.push(el);
         if(isShield) this.shieldTowers.push(el);
