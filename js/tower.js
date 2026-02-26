@@ -2,7 +2,7 @@ AFRAME.registerComponent('tower-logic', {
     schema: { type: { type: 'string', default: 'basic_turret' } },
     init: function () {
         this.level = 0;
-        let data = TOWER_DATA[this.data.type];
+        const data = TOWER_DATA[this.data.type];
         this.hp = data.hp || 0;
         this.maxHp = this.hp;
         this.isShield = this.data.type === 'shield_turret';
@@ -20,25 +20,29 @@ AFRAME.registerComponent('tower-logic', {
         this.stunDuration = data.stunDuration || 0;
         this.timer = 0;
 
-        let soundId = this.data.type === 'lighting_turret' ? '#snd-zap' : '#snd-magic';
+        const soundId = this.data.type === 'lighting_turret' ? '#snd-zap' : '#snd-magic';
         this.el.setAttribute('sound', `src: ${soundId}; volume: 0.15; positional: true; refDistance: 1; poolSize: 4`);
     },
+
     remove: function () {
         this.el.sceneEl.systems['game-manager'].unregisterTower(this.el, this.isShield);
     },
+
     canUpgrade: function() {
-        let data = TOWER_DATA[this.data.type];
+        const data = TOWER_DATA[this.data.type];
         return data.upgrades && this.level < data.upgrades.length;
     },
+
     getUpgradeCost: function() {
         if (!this.canUpgrade()) return 0;
         return TOWER_DATA[this.data.type].upgrades[this.level].cost;
     },
+
     upgrade: function() {
         if (!this.canUpgrade()) return;
 
-        let data = TOWER_DATA[this.data.type];
-        let upgradeData = data.upgrades[this.level];
+        const data = TOWER_DATA[this.data.type];
+        const upgradeData = data.upgrades[this.level];
         this.level++;
 
         if (this.isShield) {
@@ -50,14 +54,15 @@ AFRAME.registerComponent('tower-logic', {
             if (upgradeData.stunDuration) this.stunDuration = upgradeData.stunDuration;
         }
 
-        let currentScale = this.el.getAttribute('scale') || {x:1, y:1, z:1};
-        let newScale = {
+        const currentScale = this.el.getAttribute('scale') || {x: 1, y: 1, z: 1};
+        const newScale = {
             x: currentScale.x * 1.15,
             y: currentScale.y * 1.15,
             z: currentScale.z * 1.15
         };
         this.el.setAttribute('animation__upgrade', `property: scale; to: ${newScale.x} ${newScale.y} ${newScale.z}; dur: 300; easing: easeOutElastic`);
     },
+
     takeDamage: function(amount) {
         if (!this.isShield) return;
         this.hp -= amount;
@@ -65,34 +70,36 @@ AFRAME.registerComponent('tower-logic', {
             this.el.parentNode.removeChild(this.el);
         }
     },
+
     tick: function (time, timeDelta) {
         if (this.isShield) return;
 
         this.timer += timeDelta;
         if (this.timer >= this.fireRate) {
-            let target = this.findClosestEnemy();
+            const target = this.findClosestEnemy();
             if (target) {
                 this.fire(target);
                 this.timer = 0;
             }
         }
     },
+
     findClosestEnemy: function () {
-        let gameSystem = this.el.sceneEl.systems['game-manager'];
-        let enemies = gameSystem ? gameSystem.enemies : [];
-        let myPos = this.el.object3D.position;
+        const gameSystem = this.el.sceneEl.systems['game-manager'];
+        const enemies = gameSystem ? gameSystem.enemies : [];
+        const myPos = this.el.object3D.position;
         let closest = null;
         let minDistSq = this.range * this.range;
-        let isHighTower = myPos.y > 0.4;
+        const isHighTower = myPos.y > 0.4;
 
         for (let i = 0; i < enemies.length; i++) {
-            let enemy = enemies[i];
+            const enemy = enemies[i];
             if (!enemy.object3D) continue;
 
-            let stats = enemy.components['enemy-stats'];
+            const stats = enemy.components['enemy-stats'];
             if (stats && stats.data.isFlying && !isHighTower) continue;
 
-            let distSq = myPos.distanceToSquared(enemy.object3D.position);
+            const distSq = myPos.distanceToSquared(enemy.object3D.position);
             if (distSq < minDistSq) {
                 minDistSq = distSq;
                 closest = enemy;
@@ -100,11 +107,12 @@ AFRAME.registerComponent('tower-logic', {
         }
         return closest;
     },
+
     fire: function (target) {
-        let bullet = document.createElement('a-entity');
-        let pos = this.el.object3D.position;
-        let data = TOWER_DATA[this.data.type];
-        let firePos = { x: pos.x, y: pos.y + data.offsetY + 0.05, z: pos.z };
+        const bullet = document.createElement('a-entity');
+        const pos = this.el.object3D.position;
+        const data = TOWER_DATA[this.data.type];
+        const firePos = { x: pos.x, y: pos.y + data.offsetY + 0.05, z: pos.z };
 
         bullet.setAttribute('position', firePos);
         bullet.target = target;
@@ -124,29 +132,31 @@ AFRAME.registerComponent('tower-logic', {
         bullet.setAttribute('projectile', '');
         this.el.sceneEl.appendChild(bullet);
 
-        if(this.el.components.sound) this.el.components.sound.playSound();
+        if (this.el.components.sound) this.el.components.sound.playSound();
     }
 });
 
 AFRAME.registerComponent('projectile', {
-    init: function() { this.speed = 10; },
+    init: function() {
+        this.speed = 10;
+    },
     tick: function (time, timeDelta) {
         if (!this.el.target || !this.el.target.parentNode) {
             this.el.parentNode.removeChild(this.el);
             return;
         }
 
-        let currentPos = this.el.object3D.position;
-        let targetPos = this.el.target.object3D.position;
-        let targetY = targetPos.y + 0.3;
+        const currentPos = this.el.object3D.position;
+        const targetPos = this.el.target.object3D.position;
+        const targetY = targetPos.y + 0.3;
 
-        let dx = targetPos.x - currentPos.x;
-        let dy = targetY - currentPos.y;
-        let dz = targetPos.z - currentPos.z;
-        let distSq = dx*dx + dy*dy + dz*dz;
+        const dx = targetPos.x - currentPos.x;
+        const dy = targetY - currentPos.y;
+        const dz = targetPos.z - currentPos.z;
+        const distSq = dx*dx + dy*dy + dz*dz;
 
         if (distSq < 0.04) {
-            let stats = this.el.target.components['enemy-stats'];
+            const stats = this.el.target.components['enemy-stats'];
             if (stats) {
                 stats.takeHit(this.el.damage);
                 if (this.el.effect === 'stun') {
@@ -157,11 +167,11 @@ AFRAME.registerComponent('projectile', {
             return;
         }
 
-        let dist = Math.sqrt(distSq);
+        const dist = Math.sqrt(distSq);
         this.el.object3D.lookAt(targetPos.x, targetY, targetPos.z);
         this.el.object3D.rotateX(Math.PI / 2);
 
-        let move = (this.speed * timeDelta) / 1000;
+        const move = (this.speed * timeDelta) / 1000;
         this.el.object3D.position.x += (dx / dist) * move;
         this.el.object3D.position.y += (dy / dist) * move;
         this.el.object3D.position.z += (dz / dist) * move;

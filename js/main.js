@@ -3,7 +3,6 @@ AFRAME.registerSystem('game-manager', {
         this.money = 150;
         this.lives = 20;
         this.isGameOver = false;
-
         this.gameState = 'placing_base';
         this.basePosition = new THREE.Vector3(0, 0, 0);
         this.selectedTowerType = 'basic_turret';
@@ -20,22 +19,25 @@ AFRAME.registerSystem('game-manager', {
 
     registerTower: function(el, isShield) {
         this.towers.push(el);
-        if(isShield) this.shieldTowers.push(el);
+        if (isShield) this.shieldTowers.push(el);
     },
+
     unregisterTower: function(el, isShield) {
-        let i = this.towers.indexOf(el);
-        if(i > -1) this.towers.splice(i, 1);
-        if(isShield) {
-            let j = this.shieldTowers.indexOf(el);
-            if(j > -1) this.shieldTowers.splice(j, 1);
+        const i = this.towers.indexOf(el);
+        if (i > -1) this.towers.splice(i, 1);
+        if (isShield) {
+            const j = this.shieldTowers.indexOf(el);
+            if (j > -1) this.shieldTowers.splice(j, 1);
         }
     },
+
     registerEnemy: function(el) {
         this.enemies.push(el);
     },
+
     unregisterEnemy: function(el) {
-        let i = this.enemies.indexOf(el);
-        if(i > -1) this.enemies.splice(i, 1);
+        const i = this.enemies.indexOf(el);
+        if (i > -1) this.enemies.splice(i, 1);
     },
 
     setBasePosition: function(pos) {
@@ -44,8 +46,8 @@ AFRAME.registerSystem('game-manager', {
     },
 
     updateUI: function() {
-        if(this.hpText) this.hpText.setAttribute('value', "HP :  " + this.lives);
-        if(this.goldText) this.goldText.setAttribute('value', "GOLD :  " + this.money);
+        if (this.hpText) this.hpText.setAttribute('value', `HP :  ${this.lives}`);
+        if (this.goldText) this.goldText.setAttribute('value', `GOLD :  ${this.money}`);
     },
 
     tryBuyTower: function (cost) {
@@ -69,8 +71,8 @@ AFRAME.registerSystem('game-manager', {
         this.lives -= amount;
         this.updateUI();
 
-        let hud = document.querySelector('#hud-group');
-        if(hud) {
+        const hud = document.querySelector('#hud-group');
+        if (hud) {
             hud.setAttribute('position', '0 0.22 -0.6');
             setTimeout(() => hud.setAttribute('position', '0 0.2 -0.6'), 100);
         }
