@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>XR DEFENSE</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <script src="js/data/mobData.js"></script>
+    <script src="js/data/towerData.js"></script>
+
+    <script src="js/main.js"></script>
+    <script src="js/tower.js"></script>
+    <script src="js/spawner.js"></script>
+    <script src="js/controller.js"></script>
+</head>
+<body>
+
+<div id="overlay">
+    <div class="scroll-container">
+        <h1>XR DEFENSE</h1>
+        <p class="subtitle">Defend the Crystal against the dark hordes!</p>
+        <div class="separator">♦</div>
+
+        <div class="instructions-box">
+            <h3>COMMANDS & RULES</h3>
+
+            <p>
+                <strong class="highlight-red">♦ ARSENAL:</strong> Press <strong>X / Y</strong> (Left Controller) to
+                switch tower types.
+            </p>
+            <p class="rule-gap">
+                <strong class="highlight-red">♦ TO ARMS:</strong> Point and click the <strong>CRYSTAL</strong> to start
+                the wave!
+            </p>
+            <p>
+                <strong class="highlight-red">♦ BUILD:</strong> Use the <strong>RIGHT TRIGGER</strong> to deploy your
+                defenses.
+            </p>
+            <p class="rule-gap">
+                <strong class="highlight-red">♦ UPGRADE:</strong> Point at your towers. If the ring is <strong>BLUE</strong>, press the <strong>RIGHT TRIGGER</strong> to upgrade them!
+            </p>
+
+            <p class="survival-rule">
+                Survive. Do not let your HP reach 0.
+            </p>
+        </div>
+
+        <button id="xr-button">ENTER BATTLE</button>
+    </div>
+</div>
+
+<div id="game-over">
+    <h1>DEFEAT</h1>
+    <button onclick="location.reload()">RETRY</button>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('xr-button').addEventListener('click', () => {
+            document.querySelector('a-scene').enterAR();
+            document.getElementById('overlay').style.display = 'none';
+        });
+    });
+</script>
+
+<a-scene
+        ar-game-controller
+        game-manager
+        enemy-spawner
+        environment-manager
+        webxr="requiredFeatures: hit-test, local-floor, plane-detection; optionalFeatures: dom-overlay, mesh-detection; overlayElement: #overlay"
+        renderer="colorManagement: true; alpha: true"
+        vr-mode-ui="enabled: false"
+        background="color: transparent">
+
+    <a-assets>
+        <a-asset-item id="model-orc" src="assets/Model/Orc.glb"></a-asset-item>
+        <a-asset-item id="model-skeleton" src="assets/Model/Skeleton.glb"></a-asset-item>
+        <a-asset-item id="model-demon" src="assets/Model/Demon.glb"></a-asset-item>
+        <a-asset-item id="model-dragon" src="assets/Model/Dragon.glb"></a-asset-item>
+        <a-asset-item id="model-turret" src="assets/Model/Turret.glb"></a-asset-item>
+        <a-asset-item id="model-lighting" src="assets/Model/LightingTurret.glb"></a-asset-item>
+        <a-asset-item id="model-shield" src="assets/Model/ShieldTurret.glb"></a-asset-item>
+
+        <audio id="snd-zap" src="assets/Song/ZapSong.mp3" preload="auto"></audio>
+        <audio id="snd-magic" src="assets/Song/MagicShootSong.mp3" preload="auto"></audio>
+        <audio id="snd-boom" src="assets/Song/BoomSong.mp3" preload="auto"></audio>
+        <audio id="snd-orc" src="assets/Song/OrcSong.mp3" preload="auto"></audio>
+        <audio id="snd-skeleton" src="assets/Song/SkeletonSong.mp3" preload="auto"></audio>
+        <audio id="snd-gobelin" src="assets/Song/GobelinSong.mp3" preload="auto"></audio>
+        <audio id="snd-dragon" src="assets/Song/DragonSong.mp3" preload="auto"></audio>
+    </a-assets>
+
+    <a-light type="directional" intensity="1" position="-1 2 2"></a-light>
+    <a-light type="ambient" intensity="0.5"></a-light>
+
+    <a-camera position="0 1.6 0">
+        <a-entity id="hud-group" position="0 0.2 -0.6" rotation="-15 0 0">
+            <a-plane color="#d4af37" opacity="0.8" width="0.46" height="0.08" position="0 0 -0.02"></a-plane>
+            <a-plane color="#2c1308" opacity="0.95" width="0.45" height="0.07" position="0 0 -0.01"></a-plane>
+
+            <a-text id="hud-hp" value="HP :  20" color="#8a0303" position="-0.12 0 0" width="0.8"
+                    align="center"></a-text>
+
+            <a-plane color="#d4af37" opacity="0.8" width="0.001" height="0.05" position="0 0 0"></a-plane>
+
+            <a-text id="hud-gold" value="GOLD :  150" color="#d4af37" position="0.12 0 0" width="0.8"
+                    align="center"></a-text>
+        </a-entity>
+    </a-camera>
+
+    <a-entity oculus-touch-controls="hand: right"></a-entity>
+    <a-entity id="left-controller" oculus-touch-controls="hand: left" tower-menu></a-entity>
+
+    <a-entity id="reticle" visible="false">
+        <a-ring color="#00FF00" radius-inner="0.04" radius-outer="0.05" rotation="-90 0 0"></a-ring>
+        <a-cylinder color="#00FF00" height="0.1" radius="0.005" position="0 0.05 0"></a-cylinder>
+    </a-entity>
+</a-scene>
+</body>
+</html>

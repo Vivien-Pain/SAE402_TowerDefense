@@ -1,123 +1,488 @@
-<!DOCTYPE html>
-<html lang="fr">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>XR DEFENSE</title>
-    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XR Defense Tower</title>
 
-    <script src="js/data/mobData.js"></script>
-    <script src="js/data/towerData.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+            href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=IM+Fell+English+SC&display=swap"
+            rel="stylesheet"
+    />
 
-    <script src="js/main.js"></script>
-    <script src="js/tower.js"></script>
-    <script src="js/spawner.js"></script>
-    <script src="js/controller.js"></script>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+<section class="hero">
+    <div class="hero-bg"></div>
+    <div class="container text-center">
+        <h1>XR Defense Tower</h1>
+        <p>
+            A tower defense game that transforms your living room into a battlefield.
+            Use Mixed Reality to place defensive towers on your real-world furniture
+            and defend your base against waves of enemies.
+        </p>
 
-<div id="overlay">
-    <div class="scroll-container">
-        <h1>XR DEFENSE</h1>
-        <p class="subtitle">Defend the Crystal against the dark hordes!</p>
-        <div class="separator">♦</div>
+        <a href="#demo" class="btn">
+            <i data-lucide="play"></i>
+            Watch Demo
+        </a>
 
-        <div class="instructions-box">
-            <h3>COMMANDS & RULES</h3>
+        <div class="tech-stack">
+            <span class="tech-tag">A-Frame</span>
+            <span class="tech-tag">Three.js</span>
+            <span class="tech-tag">JavaScript</span>
+            <span class="tech-tag">WebXR</span>
+            <span class="tech-tag">HTML/CSS</span>
+        </div>
+    </div>
+</section>
 
-            <p>
-                <strong class="highlight-red">♦ ARSENAL:</strong> Press <strong>X / Y</strong> (Left Controller) to
-                switch tower types.
-            </p>
-            <p class="rule-gap">
-                <strong class="highlight-red">♦ TO ARMS:</strong> Point and click the <strong>CRYSTAL</strong> to start
-                the wave!
-            </p>
-            <p>
-                <strong class="highlight-red">♦ BUILD:</strong> Use the <strong>RIGHT TRIGGER</strong> to deploy your
-                defenses.
-            </p>
-            <p class="rule-gap">
-                <strong class="highlight-red">♦ UPGRADE:</strong> Point at your towers. If the ring is <strong>BLUE</strong>, press the <strong>RIGHT TRIGGER</strong> to upgrade them!
-            </p>
-
-            <p class="survival-rule">
-                Survive. Do not let your HP reach 0.
+<section id="demo" class="demo-section">
+    <div class="container">
+        <div class="text-center mb-12">
+            <h2 style="font-size: 3rem; margin-bottom: 1rem">Demonstration</h2>
+            <p class="text-muted" style="font-size: 1.25rem">
+                Experience the game in action through video captures and screenshots
             </p>
         </div>
 
-        <button id="xr-button">ENTER BATTLE</button>
+        <div
+                class="video-placeholder"
+                style="
+    display: block;
+    overflow: hidden;
+    padding: 0;
+    background-color: var(--medieval-very-dark);
+    position: relative;
+  "
+        >S
+            <iframe
+                    src="https://www.youtube.com/embed/qkGkEFIIEzE?si=XzantWD2w2dW62vw"
+                    title="YouTube video player"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allowfullscreen
+                    style="
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    "
+            ></iframe>
+        </div>
+
+        <div class="grid grid-3">
+            <div class="card">
+                <div class="card-img-placeholder">
+                    <img
+                            src="Crystal.png"
+                            alt="Crystal Placement"
+                            style="width: 100%; height: 100%; object-fit: cover"
+                    />
+                </div>
+                <div class="card-content">
+                    <h3 class="mb-2">Crystal Placement</h3>
+                    <p class="text-muted" style="font-size: 0.875rem">
+                        Initial placement of the base crystal on a detected surface
+                    </p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img-placeholder">
+                    <img
+                            src="Tower.png"
+                            alt="Tower Placement"
+                            style="width: 100%; height: 100%; object-fit: cover"
+                    />
+                </div>
+                <div class="card-content">
+                    <h3 class="mb-2">Tower Placement</h3>
+                    <p class="text-muted" style="font-size: 0.875rem">
+                        Using the laser pointer to build defenses
+                    </p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-img-placeholder">
+                    <img
+                            src="Fight.png"
+                            alt="Combat Action"
+                            style="width: 100%; height: 100%; object-fit: cover"
+                    />
+                </div>
+                <div class="card-content">
+                    <h3 class="mb-2">Combat Action</h3>
+                    <p class="text-muted" style="font-size: 0.875rem">
+                        Enemies advancing towards the base
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
+</section>
 
-<div id="game-over">
-    <h1>DEFEAT</h1>
-    <button onclick="location.reload()">RETRY</button>
-</div>
+<section id="technical" class="technical-section">
+    <div class="container">
+        <div class="text-center mb-12">
+            <h2 style="font-size: 3rem; margin-bottom: 1rem">
+                Key Features
+            </h2>
+            <p class="text-muted" style="font-size: 1.25rem">
+                WebXR technology for an immersive Mixed Reality experience
+            </p>
+        </div>
 
+        <div class="grid grid-2 mb-12">
+            <div>
+                <div class="feature-block">
+                    <div class="feature-icon-box">
+                        <i data-lucide="layers"></i>
+                    </div>
+                    <h3 style="font-size: 2rem; align-self: center">
+                        Surface Detection
+                    </h3>
+                </div>
+                <p class="text-muted">
+                    Towers are placed on surfaces detected by WebXR. The system checks
+                    gold costs before creating a tower with specific stats (type, level, HP).
+                    Shield towers draw enemy aggro while combat towers automatically
+                    target enemies within range.
+                </p>
+            </div>
+            <div class="code-block">
+            <pre><code>fire: function (target) {
+  let bullet = document.createElement('a-entity');
+  let pos = this.el.object3D.position;
+  let data = TOWER_DATA[this.data.type];
+
+  bullet.setAttribute('position', {
+    x: pos.x,
+    y: pos.y + data.offsetY + 0.05,
+    z: pos.z
+  });
+  bullet.target = target;
+  bullet.damage = this.damage;
+
+  // More magic code...
+  this.el.sceneEl.appendChild(bullet);
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="grid grid-2 mb-12">
+            <div class="code-block" style="order: 2">
+            <pre><code>AFRAME.registerComponent('tower-logic', {
+  init: function () {
+    this.isShield = this.data.type === 'shield_turret';
+    this.el.sceneEl.systems['game-manager']
+      .registerTower(this.el, this.isShield);
+
+    // Initialization logic...
+  }
+});</code></pre>
+            </div>
+            <div style="order: 1">
+                <div class="feature-block">
+                    <div class="feature-icon-box">
+                        <i data-lucide="code-2"></i>
+                    </div>
+                    <h3 style="font-size: 2rem; align-self: center">
+                        Tower Mechanics
+                    </h3>
+                </div>
+                <p class="text-muted">
+                    Each tower possesses distinct combat logic. Shield towers distract
+                    enemies with high health pools, while offensive towers use timers
+                    to trigger attacks. The system also manages 3D positional audio
+                    and special effects like stunning.
+                </p>
+            </div>
+        </div>
+
+        <div class="mb-12">
+            <div class="feature-block">
+                <div class="feature-icon-box">
+                    <i data-lucide="swords"></i>
+                </div>
+                <h3 style="font-size: 2rem; align-self: center">Enemy Types</h3>
+            </div>
+            <p class="text-muted mb-8 max-w-3xl">
+                Four types of enemies with different characteristics, including
+                a flying unit. Each enemy navigates toward the base using
+                dynamically calculated paths.
+            </p>
+
+            <div class="grid grid-4">
+                <div class="stat-card text-center">
+                    <h4
+                            style="font-size: 1.8rem; color: #166534; margin-bottom: 0.5rem"
+                    >
+                        Goblin
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1.5rem;
+                "
+                    >
+                        Fast
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Speed</span>
+                        <span class="stat-value">0.4</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Health</span>
+                        <span class="stat-value">3</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Reward</span>
+                        <span class="stat-value text-gold">6</span>
+                    </div>
+                    <div class="color-bar" style="background-color: #4a7c59"></div>
+                </div>
+
+                <div class="stat-card text-center">
+                    <h4
+                            style="font-size: 1.8rem; color: #374151; margin-bottom: 0.5rem"
+                    >
+                        Skeleton
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1.5rem;
+                "
+                    >
+                        Balanced
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Speed</span>
+                        <span class="stat-value">0.5</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Health</span>
+                        <span class="stat-value">5</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Reward</span>
+                        <span class="stat-value text-gold">10</span>
+                    </div>
+                    <div class="color-bar" style="background-color: #8b8b8b"></div>
+                </div>
+
+                <div class="stat-card text-center">
+                    <h4
+                            style="font-size: 1.8rem; color: #9a3412; margin-bottom: 0.5rem"
+                    >
+                        Orc
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1.5rem;
+                "
+                    >
+                        Tough
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Speed</span>
+                        <span class="stat-value">0.25</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Health</span>
+                        <span class="stat-value">12</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Reward</span>
+                        <span class="stat-value text-gold">18</span>
+                    </div>
+                    <div class="color-bar" style="background-color: #b85c38"></div>
+                </div>
+
+                <div class="stat-card text-center">
+                    <h4
+                            style="font-size: 1.8rem; color: #b91c1c; margin-bottom: 0.5rem"
+                    >
+                        Dragon
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1.5rem;
+                "
+                    >
+                        Flying
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Speed</span>
+                        <span class="stat-value">0.6</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Health</span>
+                        <span class="stat-value">8</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="text-muted">Reward</span>
+                        <span class="stat-value text-gold">25</span>
+                    </div>
+                    <div class="color-bar" style="background-color: #a83b3b"></div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="feature-block">
+                <div class="feature-icon-box">
+                    <i data-lucide="zap"></i>
+                </div>
+                <h3 style="font-size: 2rem; align-self: center">Tower Types</h3>
+            </div>
+            <p class="text-muted mb-8 max-w-3xl">
+                Three types of towers with unique abilities. Each tower features
+                specific range and fire rate attributes.
+            </p>
+
+            <div class="grid grid-3">
+                <div class="stat-card text-center">
+                    <h4 style="font-size: 1.5rem; margin-bottom: 0.5rem">
+                        Normal Tower
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1rem;
+                "
+                    >
+                        Damage
+                    </div>
+                    <p class="text-muted" style="font-size: 0.875rem">
+                        Fires magic projectiles at a steady rate
+                    </p>
+                    <div class="color-bar" style="background-color: #8b6914"></div>
+                </div>
+
+                <div class="stat-card text-center">
+                    <h4 style="font-size: 1.5rem; margin-bottom: 0.5rem">
+                        Electric Tower
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1rem;
+                "
+                    >
+                        Control
+                    </div>
+                    <p class="text-muted" style="font-size: 0.875rem">
+                        Slows down enemies with a stun effect
+                    </p>
+                    <div class="color-bar" style="background-color: #00ffff"></div>
+                </div>
+
+                <div class="stat-card text-center">
+                    <h4 style="font-size: 1.5rem; margin-bottom: 0.5rem">
+                        Shield Tower
+                    </h4>
+                    <div
+                            style="
+                  color: var(--medieval-bronze);
+                  font-size: 0.8rem;
+                  text-transform: uppercase;
+                  margin-bottom: 1rem;
+                "
+                    >
+                        Tank
+                    </div>
+                    <p class="text-muted" style="font-size: 0.875rem">
+                        Attracts enemies before they can reach the crystal
+                    </p>
+                    <div class="color-bar" style="background-color: #32cd32"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="resources" class="resources-section">
+    <div class="container">
+        <div class="text-center mb-12">
+            <h2 style="font-size: 3rem; margin-bottom: 1rem">Source Code</h2>
+            <p class="text-muted" style="font-size: 1.25rem">
+                Access the full project code on GitHub
+            </p>
+        </div>
+
+        <h3
+                class="mb-6"
+                style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 1.5rem;
+          "
+        >
+            <i data-lucide="github" style="color: var(--medieval-gold)"></i>
+            GitHub Repository
+        </h3>
+
+        <a
+                href="https://github.com/Vivien-Pain/SAE402_TowerDefense"
+                target="_blank"
+                class="repo-card"
+        >
+            <div class="repo-header">
+                <div class="repo-title">
+                    <i data-lucide="github"></i>
+                    XR-Defense-Tower
+                </div>
+                <i
+                        data-lucide="external-link"
+                        style="color: var(--medieval-bronze)"
+                ></i>
+            </div>
+            <p class="text-muted mb-4">
+                Full game source code (A-Frame, Three.js, JavaScript)
+            </p>
+            <div class="repo-meta">
+            <span style="display: flex; align-items: center; gap: 0.25rem">
+              <span
+                      style="
+                  width: 12px;
+                  height: 12px;
+                  background-color: var(--medieval-gold);
+                  border-radius: 50%;
+                "
+              ></span>
+              JavaScript
+            </span>
+            </div>
+        </a>
+    </div>
+</section>
+
+<script src="https://unpkg.com/lucide@latest"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('xr-button').addEventListener('click', () => {
-            document.querySelector('a-scene').enterAR();
-            document.getElementById('overlay').style.display = 'none';
-        });
-    });
+    lucide.createIcons();
 </script>
-
-<a-scene
-        ar-game-controller
-        game-manager
-        enemy-spawner
-        environment-manager
-        webxr="requiredFeatures: hit-test, local-floor, plane-detection; optionalFeatures: dom-overlay, mesh-detection; overlayElement: #overlay"
-        renderer="colorManagement: true; alpha: true"
-        vr-mode-ui="enabled: false"
-        background="color: transparent">
-
-    <a-assets>
-        <a-asset-item id="model-orc" src="assets/Model/Orc.glb"></a-asset-item>
-        <a-asset-item id="model-skeleton" src="assets/Model/Skeleton.glb"></a-asset-item>
-        <a-asset-item id="model-demon" src="assets/Model/Demon.glb"></a-asset-item>
-        <a-asset-item id="model-dragon" src="assets/Model/Dragon.glb"></a-asset-item>
-        <a-asset-item id="model-turret" src="assets/Model/Turret.glb"></a-asset-item>
-        <a-asset-item id="model-lighting" src="assets/Model/LightingTurret.glb"></a-asset-item>
-        <a-asset-item id="model-shield" src="assets/Model/ShieldTurret.glb"></a-asset-item>
-
-        <audio id="snd-zap" src="assets/Song/ZapSong.mp3" preload="auto"></audio>
-        <audio id="snd-magic" src="assets/Song/MagicShootSong.mp3" preload="auto"></audio>
-        <audio id="snd-boom" src="assets/Song/BoomSong.mp3" preload="auto"></audio>
-        <audio id="snd-orc" src="assets/Song/OrcSong.mp3" preload="auto"></audio>
-        <audio id="snd-skeleton" src="assets/Song/SkeletonSong.mp3" preload="auto"></audio>
-        <audio id="snd-gobelin" src="assets/Song/GobelinSong.mp3" preload="auto"></audio>
-        <audio id="snd-dragon" src="assets/Song/DragonSong.mp3" preload="auto"></audio>
-    </a-assets>
-
-    <a-light type="directional" intensity="1" position="-1 2 2"></a-light>
-    <a-light type="ambient" intensity="0.5"></a-light>
-
-    <a-camera position="0 1.6 0">
-        <a-entity id="hud-group" position="0 0.2 -0.6" rotation="-15 0 0">
-            <a-plane color="#d4af37" opacity="0.8" width="0.46" height="0.08" position="0 0 -0.02"></a-plane>
-            <a-plane color="#2c1308" opacity="0.95" width="0.45" height="0.07" position="0 0 -0.01"></a-plane>
-
-            <a-text id="hud-hp" value="HP :  20" color="#8a0303" position="-0.12 0 0" width="0.8"
-                    align="center"></a-text>
-
-            <a-plane color="#d4af37" opacity="0.8" width="0.001" height="0.05" position="0 0 0"></a-plane>
-
-            <a-text id="hud-gold" value="GOLD :  150" color="#d4af37" position="0.12 0 0" width="0.8"
-                    align="center"></a-text>
-        </a-entity>
-    </a-camera>
-
-    <a-entity oculus-touch-controls="hand: right"></a-entity>
-    <a-entity id="left-controller" oculus-touch-controls="hand: left" tower-menu></a-entity>
-
-    <a-entity id="reticle" visible="false">
-        <a-ring color="#00FF00" radius-inner="0.04" radius-outer="0.05" rotation="-90 0 0"></a-ring>
-        <a-cylinder color="#00FF00" height="0.1" radius="0.005" position="0 0.05 0"></a-cylinder>
-    </a-entity>
-</a-scene>
 </body>
 </html>

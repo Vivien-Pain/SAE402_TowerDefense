@@ -6,7 +6,7 @@ hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 port = 8443
 
-print(f"Lancement sur : https://{local_ip}:{port}")
+print(f"Lancement sur : https://{local_ip}:{port}/game.html")
 
 server_address = ('0.0.0.0', port)
 httpd = http.server.HTTPServer(server_address, http.server.SimpleHTTPRequestHandler)
